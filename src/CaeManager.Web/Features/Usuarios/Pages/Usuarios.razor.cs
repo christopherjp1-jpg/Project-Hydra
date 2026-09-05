@@ -15,7 +15,15 @@ using Microsoft.Extensions.Logging;
 
 namespace CaeManager.Web.Features.Usuarios.Pages;
 
-public record UsuarioListaDto(Guid Id, string Email, string NombreCompleto, string Rol, bool Activo);
+/// <summary>
+/// <paramref name="EsOperadorDelegado"/> no es un dato nuevo: sale del mismo
+/// diccionario que ya decide qué rol se muestra (ver CargarAsync). Se expone
+/// aparte porque la lista necesita distinguir visualmente "este rol es el de
+/// una asignación de otra organización" de "este es su rol propio" — sin él,
+/// las dos filas se ven idénticas y el rol delegado parece nativo.
+/// </summary>
+public record UsuarioListaDto(
+    Guid Id, string Email, string NombreCompleto, string Rol, bool Activo, bool EsOperadorDelegado);
 
 public record CoordinadorDto(Guid Id, string NombreCompleto, string Email);
 
@@ -142,13 +150,14 @@ public partial class Usuarios : CaeManager.Web.Components.PaginaIntegrableConfig
                 {
                     var activo = usuario.LockoutEnd is null || usuario.LockoutEnd < DateTimeOffset.UtcNow;
                     string rol;
-                    if (rolesDelegados.TryGetValue(usuario.Id, out var rolDelegado))
-                        rol = rolDelegado;
+                    var esOperadorDelegado = rolesDelegados.TryGetValue(usuario.Id, out var rolDelegado);
+                    if (esOperadorDelegado)
+                        rol = rolDelegado!;
                     else
                         rol = (await UserManager.GetRolesAsync(usuario)).FirstOrDefault() ?? "—";
 
                     usuarios.Add(new UsuarioListaDto(
-                        usuario.Id, usuario.Email ?? string.Empty, usuario.NombreCompleto, rol, activo));
+                        usuario.Id, usuario.Email ?? string.Empty, usuario.NombreCompleto, rol, activo, esOperadorDelegado));
                 }
             });
 
