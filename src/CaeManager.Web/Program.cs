@@ -841,6 +841,7 @@ app.MapClienteActivoEndpoints();
 // añadirse a ese OR — ver SesionSoporteEndpoints.
 app.MapSesionSoporteEndpoints();
 app.MapExtensionTokenEndpoints();
+app.MapAcreditacionesPendientesEndpoints();
 app.MapVistaVocabularioPreviewEndpoints();
 app.MapConectarMicrosoft365Endpoints();
 app.MapWebhookMicrosoft365Endpoints();
