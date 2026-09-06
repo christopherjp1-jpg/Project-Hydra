@@ -3,6 +3,7 @@ using CaeManager.Application.Documentos.Queries.ObtenerDocumentoPorId;
 using CaeManager.Application.Documentos.Queries.ObtenerDocumentos;
 using CaeManager.Application.Importacion;
 using CaeManager.Domain.Auditoria;
+using CaeManager.Infrastructure.Identity;
 using CaeManager.Web.Exportacion;
 using ClosedXML.Excel;
 using MediatR;
@@ -42,7 +43,19 @@ public static class DocumentosEndpoints
             // lectura por rangos que sí lo haría exige un formato cifrado por
             // bloques, pendiente de decisión.
             return Results.File(flujo, "application/pdf", $"{documento.TipoDocumentoNombre}.pdf", enableRangeProcessing: true);
-        });
+        })
+        // Único endpoint que la extensión de navegador necesita de este
+        // fichero: sin el PDF no puede subir nada a la plataforma CAE, y
+        // obligar al gestor a descargarlo primero a su disco es justo la
+        // fricción que la extensión existe para quitar.
+        //
+        // La política NO relaja nada. ObtenerDocumentoPorIdQuery sigue
+        // filtrando por tenant y por alcance de cartera con el rol real de
+        // quien pide, que en el caso de la extensión es el del usuario que
+        // emitió el token, no un rol fijo. Y RegistrarSiSensibleAsync (DEC-36)
+        // sigue disparando: por primera vez con un actor de verdad detrás,
+        // cosa que una clave de API de tenant no habría podido dar.
+        .RequireAuthorization(Policies.SesionOExtension);
 
         endpoints.MapGet("/documentos/plantilla.xlsx", (IPlantillaDocumentosService servicio) =>
             Results.File(

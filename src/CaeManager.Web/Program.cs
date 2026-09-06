@@ -22,6 +22,7 @@ using CaeManager.Web.Features.Clientes;
 using CaeManager.Web.Features.Comunicaciones;
 using CaeManager.Web.Features.Documentos;
 using CaeManager.Web.Features.Empresas;
+using CaeManager.Web.Features.Extension;
 using CaeManager.Web.Features.Facturacion;
 using CaeManager.Web.Features.Incidencias;
 using CaeManager.Web.Features.Integraciones.Endpoints;
@@ -242,6 +243,15 @@ authenticationBuilder.AddIdentityCookies();
 authenticationBuilder.AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
     ApiKeyAuthenticationSchemeOptions.NombreEsquema, options => { });
 
+// Extensión de navegador (MVP1 de integración con plataformas CAE). Esquema
+// propio por el mismo motivo que el de arriba, pero con una diferencia de
+// fondo: este NO fabrica claims ni fija un rol: reconstruye el principal del
+// usuario con TenantClaimsPrincipalFactory, la misma fábrica del login por
+// cookie. Así la extensión ve exactamente la cartera de quien la usa, no todo
+// el tenant — ver ExtensionAuthenticationHandler.
+authenticationBuilder.AddScheme<ExtensionAuthenticationSchemeOptions, ExtensionAuthenticationHandler>(
+    ExtensionAuthenticationSchemeOptions.NombreEsquema, options => { });
+
 // Login corporativo vía Microsoft Entra ID (SSO), opcional — ver
 // AzureAdOptions y RestriccionLoginLocalClaimsTransformation. Sin las tres
 // variables configuradas, este proveedor externo ni se registra: el login
@@ -298,6 +308,21 @@ builder.Services.AddAuthorization(options =>
     // sesión de navegador podría llamar a /api/v1 sin clave.
     options.AddPolicy("ApiPublica", policy => policy
         .AddAuthenticationSchemes(ApiKeyAuthenticationSchemeOptions.NombreEsquema)
+        .RequireAuthenticatedUser());
+
+    // Lo que sirve tanto a una pestaña de Hydra como a la extensión: la
+    // descarga del PDF de un Documento. Ambos esquemas explícitos porque el
+    // FallbackPolicy no fija ninguno y aceptaría solo el de por defecto.
+    //
+    // Extension va PRIMERO a propósito. Cuando una política nombra varios
+    // esquemas, el middleware autentica con todos y FUSIONA las identidades;
+    // si una petición trajera a la vez cabecera y cookie, el orden decide cuál
+    // gana en FindFirst. Que gane la que el llamante presentó explícitamente
+    // es lo predecible.
+    options.AddPolicy(Policies.SesionOExtension, policy => policy
+        .AddAuthenticationSchemes(
+            ExtensionAuthenticationSchemeOptions.NombreEsquema,
+            IdentityConstants.ApplicationScheme)
         .RequireAuthenticatedUser());
 
     // DEC-36 (REC-099): "Administrador del Tenant propietario, mediante
@@ -815,6 +840,7 @@ app.MapClienteActivoEndpoints();
 // propósito: aquél acumula ramas de autorización en un OR y éste no debe
 // añadirse a ese OR — ver SesionSoporteEndpoints.
 app.MapSesionSoporteEndpoints();
+app.MapExtensionTokenEndpoints();
 app.MapVistaVocabularioPreviewEndpoints();
 app.MapConectarMicrosoft365Endpoints();
 app.MapWebhookMicrosoft365Endpoints();
