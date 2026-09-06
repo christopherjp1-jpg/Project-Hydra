@@ -2,6 +2,7 @@ using CaeManager.Application.Centros;
 using CaeManager.Application.Centros.Queries.ObtenerCanalesGestionDeCentro;
 using CaeManager.Application.Centros.Queries.ObtenerCentroPorId;
 using CaeManager.Application.Centros.Queries.ObtenerCentros;
+using CaeManager.Application.Reclamaciones.Queries.ObtenerLoteReclamacion;
 using CaeManager.Application.Visitas.Queries.ObtenerProximaVisitaPorCentro;
 using CaeManager.Domain.Centros;
 using CaeManager.Web.Components.DesignSystem;
@@ -36,6 +37,7 @@ public partial class CentroDetalle : ComponentBase
     private CentroListaDto? _resumen;
     private IReadOnlyList<VisitaResumenDto> _visitas = [];
     private IReadOnlyList<CanalGestionResumenDto> _canales = [];
+    private int _documentosPorReclamar;
     private bool _cargando = true;
     private bool _error;
     private bool _cargandoCanales = true;
@@ -70,6 +72,23 @@ public partial class CentroDetalle : ComponentBase
 
             var visitasPorCentro = await Mediator.Send(new ObtenerProximaVisitaPorCentroQuery([CentroId]));
             _visitas = visitasPorCentro.GetValueOrDefault(CentroId) ?? [];
+
+            // Cuántos documentos hay pendientes de reclamar en ESTE centro.
+            // Decide si el botón "Reclamar documentación" se pinta y con qué
+            // recuento: antes aparecía siempre, también cuando no había nada
+            // que reclamar, y remitía al panel para que el gestor descubriera
+            // allí que no había objeto. Mismo criterio de "no tumbar la
+            // página" que CentroWorkspacePanel: si esto falla, el botón
+            // simplemente no aparece — es contexto, no el Centro.
+            try
+            {
+                var lotes = await Mediator.Send(new ObtenerLoteReclamacionQuery(CentroId: CentroId));
+                _documentosPorReclamar = lotes.FirstOrDefault()?.Documentos.Count ?? 0;
+            }
+            catch (Exception)
+            {
+                _documentosPorReclamar = 0;
+            }
 
             // RendererInfo.IsInteractive: mismo motivo que TrabajadorDetalle
             // (ver ese commit) — OnParametersSetAsync también corre durante
