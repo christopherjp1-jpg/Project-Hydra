@@ -172,6 +172,56 @@ jobs:
           --collect "XPlat Code Coverage" --results-directory ./coverage/integration
           -- xUnit.MaxParallelThreads=8
 
+      # Diagnostico para la PROXIMA vez que un bloque falle con algo raro
+      # dentro de InitializeAsync/MigrateAsync.
+      #
+      # El 2026-09-06 un NullReferenceException opaco ahi dentro costo
+      # reconstruir a mano, desde los logs crudos de un job ya terminado
+      # (`gh api .../jobs/<id>/logs`), que la causa NO era agotamiento de
+      # `max_connections` — ese FATAL de PostgreSQL no aparecio ni una vez en
+      # todo el log — sino una rafaga de CHECKPOINTs forzados: `DROP DATABASE
+      # ... WITH (FORCE)` (el teardown de cada clase, ver
+      # BaseDatosPostgresDePruebas.EliminarAsync) obliga a PostgreSQL a un
+      # checkpoint inmediato y sincrono (comportamiento documentado de
+      # `dropdb()`), y con hasta 8 clases terminando a la vez eso satura la
+      # E/O del runner compartido. Ese dia el fallo cayo un segundo justo
+      # despues de uno de esos checkpoints.
+      #
+      # El log del servicio no sobrevive al job por si solo, asi que se saca
+      # aqui y las dos senales se cuentan por separado en vez de dejar que la
+      # proxima investigacion tenga que releer el log entero para distinguir
+      # "no quedan conexiones" (agotamiento real) de "PostgreSQL esta ocupado
+      # haciendo fsync de la ultima base borrada" (contencion de E/O).
+      - name: Guardar el log de PostgreSQL de este bloque
+        if: failure()
+        run: docker logs ${{ job.services.postgres.id }} > postgres-bloque-${{ matrix.bloque }}.log 2>&1
+
+      - name: Diagnosticar el log de PostgreSQL si el bloque fallo
+        if: failure()
+        run: |
+          log="postgres-bloque-${{ matrix.bloque }}.log"
+          if [ ! -f "$log" ]; then
+            echo "::warning::No se pudo capturar el log de PostgreSQL de este bloque."
+            exit 0
+          fi
+          agotamiento=$(grep -c -iE "too many clients|remaining connection slots" "$log" || true)
+          checkpoints=$(grep -c "checkpoint starting: immediate force wait" "$log" || true)
+          echo "Checkpoints forzados por DROP DATABASE ... WITH (FORCE) durante el bloque: ${checkpoints:-0}"
+          if [ "${agotamiento:-0}" -gt 0 ]; then
+            echo "::error::PostgreSQL rechazo conexiones por limite de max_connections (${agotamiento} mensaje(s) de 'too many clients'/'remaining connection slots'). Esto SI es agotamiento de capacidad de conexiones: bajar el pool por clase o subir max_connections del servicio."
+          else
+            echo "::notice::PostgreSQL no rechazo ninguna conexion por max_connections en este bloque. Si el fallo fue una excepcion rara dentro de InitializeAsync/MigrateAsync, sospechar primero de los ${checkpoints:-0} checkpoints forzados de este log (contencion de E/O) antes que de un fallo de producto — ver postgres-bloque-${{ matrix.bloque }}.log."
+          fi
+
+      - name: Publicar el log de PostgreSQL del bloque
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: postgres-log-bloque-${{ matrix.bloque }}
+          path: postgres-bloque-${{ matrix.bloque }}.log
+          retention-days: 7
+          if-no-files-found: ignore
+
       # El paso de reparto garantiza que el FILTRO no este vacio, pero no que
       # el filtro haya CASADO con algo: `dotnet test` con un patron que no
       # encuentra tests termina en 0, sin fallar. Con cuatro bloques hay cuatro
@@ -1003,6 +1053,20 @@ jobs:
 
       - name: deploy/liberar-disco.tests.sh
         run: bash deploy/liberar-disco.tests.sh
+
+      # No corria en ningun sitio hasta ahora: el guion se probaba a mano.
+      #
+      # MINIMO_CLASES a vacio: el `env:` de nivel de workflow lo fija en 120
+      # para el paso REAL de reparto (mas abajo), pero aqui el propio test del
+      # guion usa un listado fijo de 4 clases para probar el reparto en si, y
+      # hereda ese mismo valor si no se anula — el suelo salta antes de que el
+      # test llegue a comprobar nada, y las 4 comprobaciones que dependen del
+      # reparto fallan con "obtenido: 0" (medido: sin este override, este paso
+      # falla incluso con el guion correcto).
+      - name: scripts/repartir-clases-de-test.tests.sh
+        env:
+          MINIMO_CLASES: ""
+        run: bash scripts/repartir-clases-de-test.tests.sh
 
   licencias-dependencias:
     name: Licencias de dependencias
