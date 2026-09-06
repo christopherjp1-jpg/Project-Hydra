@@ -10,10 +10,11 @@ namespace CaeManager.Web.Api.V1;
 /// (hallazgo del Módulo 9, auditoría 2026-08-30): ese campo es el
 /// identificador opaco interno de <c>IFileStorageService</c> (p. ej.
 /// "{tenantId}/{guid}.pdf"), no una URL utilizable — el único endpoint que
-/// sirve el archivo (<c>/documentos/{id}/archivo</c>) exige la sesión
-/// interactiva, no la clave de API, así que devolverlo aquí no habilita
-/// nada y solo expone el layout interno de almacenamiento a quien tenga la
-/// clave. Servir la descarga a un consumidor de <c>/api/v1</c> es una
+/// sirve el archivo (<c>/documentos/{id}/archivo</c>) exige sesión
+/// interactiva o token de extensión (política
+/// <c>Policies.SesionOExtension</c>), en ningún caso la clave de API, así
+/// que devolverlo aquí no habilita nada y solo expone el layout interno de
+/// almacenamiento a quien tenga la clave. Servir la descarga a un consumidor de <c>/api/v1</c> es una
 /// decisión de producto propia (endpoint autorizado por clave, con alcance
 /// y auditoría) — no se inventa aquí.
 /// </summary>

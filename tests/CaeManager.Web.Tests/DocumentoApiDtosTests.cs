@@ -11,8 +11,8 @@ namespace CaeManager.Web.Tests;
 /// Módulo 9 (auditoría 2026-08-30): <c>/api/v1/documentos</c> reutilizaba el
 /// DTO interno tal cual, incluyendo <c>ArchivoUrl</c> — el identificador
 /// opaco de <c>IFileStorageService</c>, no una URL utilizable por quien solo
-/// tiene una clave de API (el endpoint de descarga exige sesión
-/// interactiva). Estos casos prueban que la proyección pública nunca puede
+/// tiene una clave de API (el endpoint de descarga exige sesión interactiva
+/// o token de extensión, nunca la clave de API). Estos casos prueban que la proyección pública nunca puede
 /// filtrarlo, ni siquiera si alguien vuelve a añadir el campo al DTO interno
 /// sin fijarse en el mapeo.
 /// </summary>
