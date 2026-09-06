@@ -89,7 +89,17 @@
             <div class="centro360-acciones">
                 <Boton OnClick="ProgramarVisita">Programar visita</Boton>
                 <Boton Variante="VarianteBoton.Secundario" Tamano="TamanoBoton.Pequeno" OnClick="AbrirInformacion">Editar centro</Boton>
-                <Boton Variante="VarianteBoton.Secundario" Tamano="TamanoBoton.Pequeno" OnClick="AbrirInformacion">Reclamar documentación</Boton>
+                @* Remite al panel a propósito (ver doc de la clase): el drawer de
+                   confirmación vive allí y ese segundo paso es deliberado
+                   (COMUNICACIONES.md § 16.3, "siempre confirmar"). Lo que sí se
+                   decide aquí es SI hay algo que reclamar, para no ofrecer una
+                   acción sin objeto. *@
+                @if (_documentosPorReclamar > 0)
+                {
+                    <Boton Variante="VarianteBoton.Secundario" Tamano="TamanoBoton.Pequeno" OnClick="AbrirInformacion">
+                        Reclamar documentación (@_documentosPorReclamar)
+                    </Boton>
+                }
                 <Boton Variante="VarianteBoton.Secundario" Tamano="TamanoBoton.Pequeno" OnClick="GenerarInformeDelCentro">Generar informe del centro</Boton>
             </div>
         </div>
