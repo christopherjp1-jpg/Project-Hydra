@@ -23,6 +23,7 @@ else
 {
     <div class="workspace-cabecera-entidad">
         <h2 class="workspace-titulo-entidad">@_detalle.Nombre</h2>
+        <span class="workspace-subtitulo-entidad">@_detalle.EmpleadorNombre</span>
         @if (PestanaActiva == "informacion" && !_editandoInformacion)
         {
             <Boton Variante="VarianteBoton.Fantasma" Tamano="TamanoBoton.Pequeno" OnClick="IniciarEdicionInformacion" aria-label="Editar información del vehículo">
@@ -43,8 +44,8 @@ else
                     }
                     <div class="workspace-grupo-campos">
                         <CampoTexto Etiqueta="Nombre" Valor="@_nombreInfo" ValorChanged="v => _nombreInfo = v" MensajeError="@ObtenerErrorInformacion(nameof(EditarVehiculoCommand.Nombre))" />
-                        <CampoTexto Etiqueta="Modelo" Valor="@_modeloInfo" ValorChanged="v => _modeloInfo = v" MensajeError="@ObtenerErrorInformacion(nameof(EditarVehiculoCommand.Modelo))" />
                         <CampoTexto Etiqueta="Matrícula" Valor="@_numeroPlacaInfo" ValorChanged="v => _numeroPlacaInfo = v" MensajeError="@ObtenerErrorInformacion(nameof(EditarVehiculoCommand.NumeroPlaca))" />
+                        <CampoTexto Etiqueta="Modelo" Valor="@_modeloInfo" ValorChanged="v => _modeloInfo = v" MensajeError="@ObtenerErrorInformacion(nameof(EditarVehiculoCommand.Modelo))" />
                         <CampoInfo Etiqueta="Empleador" Valor="@_detalle.EmpleadorNombre" />
                     </div>
                     <div class="workspace-acciones-edicion">
@@ -56,8 +57,8 @@ else
                 {
                     <div class="workspace-grupo-campos">
                         <CampoInfo Etiqueta="Nombre" Valor="@_detalle.Nombre" />
-                        <CampoInfo Etiqueta="Modelo" Valor="@_detalle.Modelo" />
                         <CampoInfo Etiqueta="Matrícula" Valor="@_detalle.NumeroPlaca" />
+                        <CampoInfo Etiqueta="Modelo" Valor="@_detalle.Modelo" />
                         <CampoInfo Etiqueta="Empleador" Valor="@_detalle.EmpleadorNombre" />
                     </div>
                 }

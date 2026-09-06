@@ -13,6 +13,7 @@
 @using FluentValidation
 @using MediatR
 @using CaeManager.Web.Features.Documentos
+@using CaeManager.Web.Features.Vehiculos.Components
 @using Microsoft.AspNetCore.Components.QuickGrid
 @inject IMediator Mediator
 @inject ToastService ToastService
@@ -27,7 +28,7 @@
     </div>
 
     <div class="barra-filtros">
-        <CampoTexto Placeholder="Buscar por nombre, modelo o placa…" Valor="@_busqueda" ValorChanged="BuscarAsync" />
+        <CampoTexto Placeholder="Buscar por nombre, modelo o matrícula…" Valor="@_busqueda" ValorChanged="BuscarAsync" />
         <FiltroEstado Etiqueta="Documentación" Valor="@_estadoFiltro" ValorChanged="CambiarEstadoAsync"
                       Opciones="EstadoDocumentoUi.OpcionesDocumentales" />
         <div class="filtro-empresa">
@@ -78,12 +79,12 @@
                     </TemplateColumn>
                 }
                 <TemplateColumn Title="Nombre" Sortable="true" SortBy="@(GridSort<VehiculoListaDto>.ByAscending(v => v.Nombre))">
-                    <button type="button" class="enlace-nombre-fila" @onclick='() => WorkspaceService.AbrirAsync(EntidadWorkspace.Vehiculo, context.Id, context.Nombre, "informacion")'>
+                    <button type="button" class="enlace-nombre-fila" @onclick='() => AbrirPreview(context.Id)'>
                         @context.Nombre
                     </button>
                 </TemplateColumn>
                 <PropertyColumn Property="@(v => v.Modelo)" Sortable="true" />
-                <PropertyColumn Property="@(v => v.NumeroPlaca)" Title="Placa" Sortable="true" />
+                <PropertyColumn Property="@(v => v.NumeroPlaca)" Title="Matrícula" Sortable="true" />
                 <PropertyColumn Property="@(v => v.EmpleadorNombre)" Title="Empresa / Subcontrata" Sortable="true" />
                 <TemplateColumn Title="Documentación" Sortable="true" SortBy="@(GridSort<VehiculoListaDto>.ByAscending(v => v.EstadoDocumental))">
                     <Badge Tono="EstadoDocumentoUi.TonoDocumental(context.EstadoDocumental)">
@@ -92,8 +93,8 @@
                 </TemplateColumn>
                 <TemplateColumn Title="Acciones" Align="Align.End">
                     <MenuAcciones>
-                        <ItemMenuAccion OnClick='() => WorkspaceService.AbrirAsync(EntidadWorkspace.Vehiculo, context.Id, context.Nombre, "informacion")'>
-                            Detalles
+                        <ItemMenuAccion OnClick='() => AbrirPreview(context.Id)'>
+                            Ver
                         </ItemMenuAccion>
                         <ItemMenuAccion Destructivo="true" OnClick="() => AbrirEliminar(context.Id, context.Nombre)">
                             Eliminar
@@ -169,7 +170,7 @@
 
         <CampoTexto Etiqueta="Nombre" Valor="@_nombre" ValorChanged="v => _nombre = v" OnBlur="ValidarNombreAsync" MensajeError="@ObtenerError(nameof(CrearVehiculoCommand.Nombre))" />
         <CampoTexto Etiqueta="Modelo" Valor="@_modelo" ValorChanged="v => _modelo = v" OnBlur="ValidarModeloAsync" MensajeError="@ObtenerError(nameof(CrearVehiculoCommand.Modelo))" />
-        <CampoTexto Etiqueta="Número de placa" Valor="@_numeroPlaca" ValorChanged="v => _numeroPlaca = v" OnBlur="ValidarNumeroPlacaAsync" MensajeError="@ObtenerError(nameof(CrearVehiculoCommand.NumeroPlaca))" />
+        <CampoTexto Etiqueta="Matrícula" Valor="@_numeroPlaca" ValorChanged="v => _numeroPlaca = v" OnBlur="ValidarNumeroPlacaAsync" MensajeError="@ObtenerError(nameof(CrearVehiculoCommand.NumeroPlaca))" />
     </ChildContent>
     <Pie>
         <Boton Variante="VarianteBoton.Secundario" Deshabilitado="_guardando" OnClick="() => CerrarDrawerAsync(false)">
@@ -199,3 +200,5 @@
     Mensaje="Se ocultarán de las listas activas. Podrás recuperarlos desde Auditoría."
     EnProgreso="_eliminandoLote"
     OnConfirmar="ConfirmarEliminarLoteAsync" />
+
+<VehiculoPreviewDrawer VehiculoId="_previewVehiculoId" Visible="_previewVisible" VisibleChanged="v => _previewVisible = v" OnOperar="AbrirDesdePreviewAsync" />
