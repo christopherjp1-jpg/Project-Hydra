@@ -71,7 +71,28 @@ if [ -n "${MINIMO_CLASES:-}" ] && [ "$numero" -lt "$MINIMO_CLASES" ]; then
   exit 1
 fi
 
-mias=$(printf '%s\n' "$clases" | awk -v n="$total" -v k="$bloque" 'NR % n == (k % n)')
+# El reparto es por HASH ESTABLE del nombre de la clase (CRC32 vía `cksum`),
+# no por posicion en la lista ordenada.
+#
+# Con `NR % n` (version anterior), insertar una clase nueva desplaza la
+# posicion de TODA clase que la siga en el orden alfabetico, y con eso su
+# bloque. Medido el 2026-09-06 (PR #487): una sola clase nueva cuyo nombre
+# empieza cerca del principio del alfabeto movio las 199 clases existentes de
+# bloque en el mismo commit — el bloque 4 broto con clases que nunca habian
+# corrido juntas y goteo un fallo intermitente (NullReferenceException en
+# NpgsqlMigrator.MigrateAsync, corregido en un reintento sobre el mismo commit,
+# sin tocar una linea) que no tenia nada que ver con la clase nueva en si.
+#
+# El hash de una clase depende solo de su propio nombre: anadir, quitar o
+# renombrar OTRA clase nunca lo cambia, asi que una clase nueva cae en su
+# bloque sola y el resto del reparto queda exactamente como estaba.
+mias=$(printf '%s\n' "$clases" | while IFS= read -r clase; do
+  bucket=$(( $(printf '%s' "$clase" | cksum | cut -d' ' -f1) % total ))
+  # Bloques numerados 1..total; el bucket 0..total-1 es bloque bucket+1.
+  if [ "$bucket" -eq $(( bloque - 1 )) ]; then
+    printf '%s\n' "$clase"
+  fi
+done)
 
 if [ -z "$mias" ]; then
   echo "El reparto dejo el bloque $bloque de $total sin ninguna clase." >&2
