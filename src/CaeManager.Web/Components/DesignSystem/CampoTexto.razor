@@ -4,7 +4,15 @@
     {
         <label for="@_id">@Etiqueta</label>
     }
-    <input id="@_id"
+    @* @key cambia SOLO cuando el padre reescribe el valor por su cuenta (ver
+       OnParametersSet) y sirve para forzar que el navegador reciba el valor
+       nuevo. Hace falta porque _valorMostrado no se toca al teclear: el DOM
+       del navegador se ha ido por su lado, y devolverlo al mismo valor que
+       Blazor ya tenía renderizado no produce diff ninguno — el <input> se
+       quedaría con lo tecleado pese a que el padre lo acaba de limpiar. Con
+       @key el elemento se recrea y nace con el valor correcto. *@
+    <input @key="_generacionValor"
+           id="@_id"
            type="@Type"
            class="@ClaseCompleta"
            value="@_valorMostrado"
@@ -27,6 +35,13 @@
     private string _ultimoValor = string.Empty;
     private string _valorMostrado = string.Empty;
     private string _ultimoValorNotificado = string.Empty;
+
+    /// <summary>
+    /// Se incrementa en cada resincronización venida del padre — ver el @key
+    /// del &lt;input&gt;. No cuenta pulsaciones: solo las veces que el valor
+    /// cambió por una razón ajena a lo que el usuario está escribiendo.
+    /// </summary>
+    private int _generacionValor;
 
     [Parameter] public string? Etiqueta { get; set; }
     [Parameter] public string Valor { get; set; } = string.Empty;
@@ -86,6 +101,7 @@
             _valorMostrado = Valor;
             _ultimoValor = Valor;
             _ultimoValorNotificado = Valor;
+            _generacionValor++;
         }
     }
 

@@ -9,3 +9,17 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radio-pequeno, 4px);
 }
+
+/*
+  .barra-filtros (list-page.css, global) trae max-width:480px, pensado para
+  buscador + un único filtro. Aquí son tres controles —buscar, Rol y Estado—
+  y a 480px el select de rol recorta "Coordinador CAE", que es justamente lo
+  que hay que poder leer para elegirlo. Mismo remedio que Clientes.razor.css,
+  y por la misma vía: aislamiento de CSS de Blazor, la regla lleva el atributo
+  de ámbito y no toca list-page.css ni las páginas que sí caben en 480px.
+*/
+.barra-filtros {
+    max-width: 720px;
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
+}
