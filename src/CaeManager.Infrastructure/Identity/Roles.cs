@@ -37,4 +37,29 @@ public static class Roles
 
     /// <summary>Etiqueta en español para mostrar en la UI — el código interno nunca se muestra tal cual.</summary>
     public static string NombreVisible(string codigo) => NombresVisibles.GetValueOrDefault(codigo, codigo);
+
+    /// <summary>
+    /// Si el rol alcanza toda la organización por sí mismo, sin depender de
+    /// ninguna Asignación de Cartera. Consulta entra: ve todo, aunque sea en
+    /// solo lectura — alcance y autoridad son ejes distintos.
+    ///
+    /// <para>
+    /// Vive aquí y no en <c>AlcanceDatosService</c> porque hay dos lectores con
+    /// preguntas simétricas: aquel resuelve el alcance de quien MIRA (y
+    /// restringe datos con él), y la lista de /usuarios lo pinta para OTROS. Con
+    /// la condición escrita dos veces, añadir un rol de alcance total dejaba una
+    /// de las dos en silencio: la pantalla diría "sin cartera" de alguien que ve
+    /// todo, y nada se pondría rojo.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Alcance total NO es privilegio de plataforma</b>: aquí solo se decide
+    /// por rol de negocio. Las capacidades SoporteLectura y BreakGlass abren el
+    /// contexto por otra vía y se resuelven antes que el rol — ver
+    /// <c>AlcanceDatosService.TieneAccesoTotalAsync</c>, que consulta el plano 3
+    /// primero justamente porque una sesión privilegiada no tiene rol.
+    /// </para>
+    /// </summary>
+    public static bool AlcanzaTodaLaOrganizacion(string? codigo) =>
+        codigo is Administrador or DireccionCae or Consulta;
 }

@@ -109,9 +109,22 @@ public class AccesoRestringidoACatalogosDeAsignacionTests
         // Registro de los DbSet y de las interfaces de consulta.
         "src/CaeManager.Infrastructure/Persistence/CaeManagerDbContext.cs",
 
-        // Único punto de autorización fina: filtra por propietario Y por
-        // operador de origen.
+        // Autorización fina del usuario que MIRA: qué ve él. Filtra por
+        // propietario (el tenant activo) y por operador de origen (el del claim
+        // de su sesión).
         "src/CaeManager.Infrastructure/Autorizacion/AlcanceDatosService.cs",
+
+        // La misma pregunta, hecha sobre OTROS: qué alcanza cada cuenta del
+        // tenant, para poder pintarlo en /usuarios. Aplica las dos mitades del
+        // filtro de posición, con la única diferencia que impone la pregunta —
+        // el operador no puede salir del claim de sesión, que es el de quien
+        // mira, así que sale del tenant de ORIGEN de cada usuario listado
+        // (OperadorTenantId == usuario.TenantId, join contra AspNetUsers). El
+        // propietario sí es el tenant activo, y quien llama ocupa esa posición:
+        // la pantalla es [Authorize(Administrador, DireccionCae)]. No expone
+        // ninguna fila de otro propietario ni de una posición ajena; ni
+        // siquiera devuelve las asignaciones, solo un recuento por usuario.
+        "src/CaeManager.Infrastructure/Autorizacion/DirectorioUsuariosTenant.cs",
 
         // Configuraciones EF de las dos tablas.
         "src/CaeManager.Infrastructure/Persistence/Configurations/AsignacionOperacionConfiguration.cs",

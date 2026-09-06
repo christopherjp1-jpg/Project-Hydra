@@ -11,7 +11,17 @@ namespace CaeManager.Infrastructure.Autorizacion;
 /// <summary>
 /// Implementación real de IAlcanceDatosService — vive en Infrastructure
 /// porque necesita leer ApplicationUser (CoordinadorUsuarioId/ClienteId),
-/// que Application no puede referenciar (ver Roles.cs). Cachea el resultado
+/// que Application no puede referenciar (ver Roles.cs).
+///
+/// <para>
+/// Resuelve el alcance del usuario que MIRA, y es el único punto que lo hace:
+/// toda restricción de datos por cartera pasa por aquí. No confundir con
+/// <c>DirectorioUsuariosTenant.ObtenerCarterasVigentesAsync</c>, que responde
+/// la pregunta simétrica —qué alcanzan OTROS— y es puramente informativa: pinta
+/// una columna en /usuarios y no restringe nada. Si algún día hay que
+/// restringir datos según el alcance de un tercero, se hace desde aquí, no
+/// desde allí.
+/// </para> Cachea el resultado
 /// de cada método en la propia instancia (scoped por request/circuito) para
 /// no repetir la misma resolución de cartera varias veces en la misma
 /// petición cuando varios filtros de una Query la necesitan.
@@ -84,7 +94,7 @@ public class AlcanceDatosService(
         }
 
         var rol = await currentUserService.ObtenerRolActualAsync();
-        _accesoTotal = rol is Roles.Administrador or Roles.DireccionCae or Roles.Consulta;
+        _accesoTotal = Roles.AlcanzaTodaLaOrganizacion(rol);
 
         return _accesoTotal.Value;
     }

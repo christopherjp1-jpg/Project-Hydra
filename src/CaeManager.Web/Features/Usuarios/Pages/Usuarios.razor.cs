@@ -24,7 +24,23 @@ namespace CaeManager.Web.Features.Usuarios.Pages;
 /// las dos filas se ven idénticas y el rol delegado parece nativo.
 /// </summary>
 public record UsuarioListaDto(
-    Guid Id, string Email, string NombreCompleto, string Rol, bool Activo, bool EsOperadorDelegado);
+    Guid Id, string Email, string NombreCompleto, string Rol, bool Activo, bool EsOperadorDelegado,
+    AlcanceUsuarioDto Alcance);
+
+/// <summary>
+/// Qué alcanza una cuenta, ya resuelto a texto. Es presentación y por eso vive
+/// aquí y no en el directorio: la misma cartera se lee distinto según el rol
+/// —un Coordinador CAE alcanza lo de sus gestores, un usuario de portal solo su
+/// propia empresa— y quien mira la lista necesita la respuesta, no los datos
+/// para calcularla.
+/// </summary>
+/// <param name="EsAviso">
+/// Alcance cero. No es un error de configuración necesariamente —una cuenta
+/// recién creada todavía no tiene cartera— pero sí la explicación de por qué
+/// esa persona abre el producto y no ve nada, que sin esta columna no está
+/// escrita en ningún sitio.
+/// </param>
+public record AlcanceUsuarioDto(string Texto, bool EsAviso, string Explicacion);
 
 public record CoordinadorDto(Guid Id, string NombreCompleto, string Email);
 
@@ -252,7 +268,18 @@ public partial class Usuarios : CaeManager.Web.Components.PaginaIntegrableConfig
                 // esa restricción y alarma sin motivo a quien lo ve.
                 var rolesDelegados = await DirectorioUsuarios.ObtenerRolesDeOperadoresDelegadosAsync();
 
-                foreach (var usuario in await DirectorioUsuarios.ObtenerVisiblesAsync())
+                // Dos consultas para toda la página, no una por fila: las
+                // carteras vigentes del tenant, y los usuarios visibles (de
+                // donde sale también qué gestores cuelga de cada coordinador,
+                // sin volver a la base).
+                var carteras = await DirectorioUsuarios.ObtenerCarterasVigentesAsync();
+                var visibles = await DirectorioUsuarios.ObtenerVisiblesAsync();
+
+                var gestoresPorCoordinador = visibles
+                    .Where(u => u.CoordinadorUsuarioId is not null)
+                    .ToLookup(u => u.CoordinadorUsuarioId!.Value, u => u.Id);
+
+                foreach (var usuario in visibles)
                 {
                     var activo = usuario.LockoutEnd is null || usuario.LockoutEnd < DateTimeOffset.UtcNow;
                     string rol;
@@ -263,7 +290,8 @@ public partial class Usuarios : CaeManager.Web.Components.PaginaIntegrableConfig
                         rol = (await UserManager.GetRolesAsync(usuario)).FirstOrDefault() ?? "—";
 
                     usuarios.Add(new UsuarioListaDto(
-                        usuario.Id, usuario.Email ?? string.Empty, usuario.NombreCompleto, rol, activo, esOperadorDelegado));
+                        usuario.Id, usuario.Email ?? string.Empty, usuario.NombreCompleto, rol, activo, esOperadorDelegado,
+                        CalcularAlcance(usuario, rol, carteras, gestoresPorCoordinador)));
                 }
             });
 
@@ -279,6 +307,77 @@ public partial class Usuarios : CaeManager.Web.Components.PaginaIntegrableConfig
             _cargando = false;
         }
     }
+
+    /// <summary>
+    /// El rol que entra aquí es el <b>efectivo en esta organización</b>: para
+    /// un Operador Delegado, el de su asignación aquí y no el de su tenant de
+    /// origen. Es el mismo que se pinta en la columna Rol, y tiene que serlo —
+    /// decir "Administrador" en una columna y calcular el alcance con otra
+    /// cosa sería peor que no decir nada.
+    /// </summary>
+    private static AlcanceUsuarioDto CalcularAlcance(
+        ApplicationUser usuario,
+        string rol,
+        IReadOnlyDictionary<Guid, CarteraDeUsuario> carteras,
+        ILookup<Guid, Guid> gestoresPorCoordinador)
+    {
+        // El mismo predicado que usa AlcanceDatosService para decidirlo de
+        // verdad, no una copia: si allí un rol pasa a ver todo y aquí no, la
+        // columna diría "sin cartera" de alguien que ve toda la organización.
+        if (Roles.AlcanzaTodaLaOrganizacion(rol))
+            return new("Todos los clientes", false,
+                "Su rol alcanza toda la organización; no depende de ninguna Asignación de Cartera.");
+
+        if (rol == Roles.Cliente)
+            return usuario.ClienteId is not null
+                ? new("1 cliente", false,
+                    "Usuario de portal: solo ve la documentación relacionada con la empresa a la que está vinculado.")
+                : new("Sin empresa vinculada", true,
+                    "Un usuario de portal sin empresa vinculada no ve nada. Se vincula por CIF al editar la cuenta.");
+
+        if (rol == Roles.CoordinadorCae)
+        {
+            // Un Coordinador CAE no tiene cartera propia: alcanza la unión de
+            // las de los Gestores CAE que tiene asignados (ver
+            // AlcanceDatosService.ObtenerClienteIdsParaCoordinadorAsync).
+            // Mirar la suya sería mirar donde nunca hay nada.
+            var gestores = gestoresPorCoordinador[usuario.Id].ToList();
+            if (gestores.Count == 0)
+                return new("Sin gestores asignados", true,
+                    "Un Coordinador CAE alcanza lo que alcanzan los Gestores CAE que tiene asignados. Sin ninguno, no ve nada.");
+
+            return DesdeCarteras(
+                gestores.Where(carteras.ContainsKey).Select(id => carteras[id]).ToList(),
+                explicacion: $"A través de {DescribirCantidad(gestores.Count, "Gestor CAE", "Gestores CAE")} que tiene asignados.",
+                explicacionSinAlcance: "Sus Gestores CAE no tienen ninguna cartera vigente, así que tampoco él alcanza nada.");
+        }
+
+        if (rol == Roles.GestorCae)
+            return DesdeCarteras(
+                carteras.TryGetValue(usuario.Id, out var propia) ? [propia] : [],
+                explicacion: "Por sus Asignaciones de Cartera vigentes en esta organización.",
+                explicacionSinAlcance: "Sin Asignación de Cartera vigente no ve ningún cliente, y toda lista le sale vacía.");
+
+        return new("—", false, "Esta cuenta todavía no tiene rol, así que no alcanza nada.");
+    }
+
+    private static AlcanceUsuarioDto DesdeCarteras(
+        IReadOnlyList<CarteraDeUsuario> carteras, string explicacion, string explicacionSinAlcance)
+    {
+        // Universal es "toda la operación de este tenant", no "todos los
+        // tenants" — el ámbito nunca se lee fuera de su propietario.
+        if (carteras.Any(c => c.EsUniversal))
+            return new("Toda la operación", false, explicacion);
+
+        var clientes = carteras.SelectMany(c => c.ClienteIds).Distinct().Count();
+
+        return clientes == 0
+            ? new("Sin cartera", true, explicacionSinAlcance)
+            : new(DescribirCantidad(clientes, "cliente", "clientes"), false, explicacion);
+    }
+
+    private static string DescribirCantidad(int cantidad, string singular, string plural) =>
+        $"{cantidad} {(cantidad == 1 ? singular : plural)}";
 
     private async Task CambiarRolAsync(string valor)
     {
