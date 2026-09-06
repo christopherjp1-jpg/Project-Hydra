@@ -22,6 +22,26 @@
     height: 40px;
 }
 
+/* Círculo de acento (AcentoIcono/FondoIcono) — icono de estado de severidad
+   (error, aviso, bloqueo) en vez del icono gris genérico. Ver Estados Sistema
+   TALVEG.dc.html: mismo círculo de 56px para Error/404/Acceso denegado. */
+.estado-vacio-icono-acento {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--estado-vacio-acento);
+    background: var(--estado-vacio-fondo-icono);
+    color: var(--estado-vacio-acento);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.estado-vacio-icono-acento ::deep .icono {
+    width: 24px;
+    height: 24px;
+}
+
 .estado-vacio h3 {
     font: var(--font-heading-md);
     color: var(--color-text);

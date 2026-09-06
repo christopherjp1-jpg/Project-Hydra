@@ -1,0 +1,134 @@
+@* Shell centrado y sin navegación para las tres pantallas de estado del
+   sistema (Error, /not-found, /acceso-denegado) — Estados Sistema
+   TALVEG.dc.html. Estas páginas no llevan MainLayout: sin sesión (Error) o
+   con ella pero sin destino claro (404, denegado), no tiene sentido pintar
+   menú lateral ni barra superior. Marca arriba con salida al Dashboard,
+   tarjeta con acento de color por Tipo, EstadoVacio del catálogo para
+   icono/título/descripción, y un camino de salida siempre visible.
+
+   Deliberadamente sin @rendermode: nada aquí necesita un circuito
+   interactivo — Boton navega con Href (ancla real) y "Reintentar" usa
+   OnClickScript (onclick nativo). Error.razor en concreto depende de esto:
+   si lo que trajo al usuario aquí fue la base de datos caída, abrir un
+   circuito interactivo no debería añadir más trabajo antes de poder pintar
+   el mensaje (mismo principio que ya aplicaba AuthLayout, Sentry DOTNET-8). *@
+<div class="pagina-estado-sistema">
+    <a class="marca-estado-sistema" href="/" aria-label="@($"{Marca.Nombre} — ir al Dashboard")">
+        <span class="marca-estado-sistema-marca" aria-hidden="true"></span>
+        <span class="marca-estado-sistema-nombre">@Marca.Nombre</span>
+    </a>
+
+    <Tarjeta Class="@($"tarjeta-estado-sistema tarjeta-estado-sistema-{ClaseTipo}")">
+        <EstadoVacio Titulo="@Titulo" Descripcion="@Descripcion"
+                     NombreIcono="@NombreIcono"
+                     AcentoIcono="@Acento" FondoIcono="@Fondo">
+            <Accion>
+                @if (MostrarReferenciaTecnica)
+                {
+                    <div class="referencia-tecnica-estado-sistema">
+                        <span class="referencia-tecnica-etiqueta">Referencia técnica</span>
+                        <code class="referencia-tecnica-valor">@ReferenciaTecnica</code>
+                        <BotonCopiar Valor="@ReferenciaTecnica" Etiqueta="la referencia técnica" />
+                    </div>
+                    <p class="referencia-tecnica-ayuda">
+                        Si escribes a soporte, pega esta referencia: identifica exactamente esta petición en los registros.
+                    </p>
+                }
+
+                @if (Tipo == TipoEstadoSistema.AccesoDenegado)
+                {
+                    <div class="aviso-permisos-estado-sistema">
+                        Los permisos dependen de tu rol y de la cartera que tengas asignada. Un administrador de tu organización puede revisarlos.
+                    </div>
+                }
+
+                <div class="acciones-estado-sistema">
+                    <Boton Href="/">Ir al Dashboard</Boton>
+                    @if (MostrarReintentar)
+                    {
+                        <Boton Variante="VarianteBoton.Secundario" OnClickScript="window.location.reload()">Reintentar</Boton>
+                    }
+                    @if (MostrarSoporte)
+                    {
+                        <Boton Variante="VarianteBoton.Secundario" Href="/comunicaciones">Escribir a un administrador</Boton>
+                    }
+                </div>
+            </Accion>
+        </EstadoVacio>
+    </Tarjeta>
+
+    <div class="pie-legal-estado-sistema">
+        <a href="/legal/privacidad">Política de Privacidad</a>
+        <span aria-hidden="true">·</span>
+        <a href="/legal/terminos">Términos y Condiciones</a>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TipoEstadoSistema Tipo { get; set; }
+
+    /// <summary>
+    /// Solo aplica a <see cref="TipoEstadoSistema.Error"/>. Sin valor, el
+    /// bloque de referencia no se pinta — nunca una etiqueta con un hueco
+    /// vacío detrás.
+    /// </summary>
+    [Parameter] public string? ReferenciaTecnica { get; set; }
+
+    private bool MostrarReferenciaTecnica =>
+        Tipo == TipoEstadoSistema.Error && !string.IsNullOrEmpty(ReferenciaTecnica);
+
+    private bool MostrarReintentar => Tipo == TipoEstadoSistema.Error;
+
+    private bool MostrarSoporte => Tipo == TipoEstadoSistema.AccesoDenegado;
+
+    private string ClaseTipo => Tipo switch
+    {
+        TipoEstadoSistema.Error => "error",
+        TipoEstadoSistema.NoEncontrado => "no-encontrado",
+        TipoEstadoSistema.AccesoDenegado => "acceso-denegado",
+        _ => "error",
+    };
+
+    private string Titulo => Tipo switch
+    {
+        TipoEstadoSistema.Error => "Ocurrió un error inesperado",
+        TipoEstadoSistema.NoEncontrado => "No encontramos esta página",
+        TipoEstadoSistema.AccesoDenegado => "No tienes permiso para ver esta sección",
+        _ => string.Empty,
+    };
+
+    private string Descripcion => Tipo switch
+    {
+        TipoEstadoSistema.Error => "No pudimos completar tu solicitud. Inténtalo nuevamente en unos segundos.",
+        TipoEstadoSistema.NoEncontrado => "Comprueba la dirección o vuelve al Dashboard.",
+        // Nunca "el cliente X no es tuyo" ni "esa ficha no existe": ambas
+        // frases confirmarían que el recurso existe, y eso es justo la fuga
+        // de información que esta pantalla existe para evitar.
+        TipoEstadoSistema.AccesoDenegado => "Si crees que es un error, contacta a un administrador.",
+        _ => string.Empty,
+    };
+
+    private string NombreIcono => Tipo switch
+    {
+        TipoEstadoSistema.Error => "error-circulo",
+        TipoEstadoSistema.NoEncontrado => "buscar",
+        TipoEstadoSistema.AccesoDenegado => "seguridad",
+        _ => "vacio",
+    };
+
+    private string Acento => Tipo switch
+    {
+        TipoEstadoSistema.Error => "var(--color-danger-500)",
+        TipoEstadoSistema.NoEncontrado => "var(--color-border-strong)",
+        TipoEstadoSistema.AccesoDenegado => "var(--color-info-500)",
+        _ => "var(--color-border-strong)",
+    };
+
+    private string Fondo => Tipo switch
+    {
+        TipoEstadoSistema.Error => "var(--color-danger-50)",
+        TipoEstadoSistema.NoEncontrado => "var(--color-surface-subtle)",
+        TipoEstadoSistema.AccesoDenegado => "var(--color-info-50)",
+        _ => "var(--color-surface-subtle)",
+    };
+}
