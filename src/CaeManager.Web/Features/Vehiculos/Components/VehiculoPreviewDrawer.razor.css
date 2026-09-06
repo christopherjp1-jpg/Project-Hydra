@@ -1,0 +1,157 @@
+/*
+    Mismo criterio de apilamiento que ContextWorkspace.razor.css: sin scrim
+    (role="complementary", se puede seguir interactuando con la lista detrás)
+    — "vista previa" es intencionalmente más ligera que el Context Workspace
+    completo que abre al pulsar "Operar →". Ancho 400px según el mockup
+    (Vehiculos TALVEG.dc.html), mismo criterio que ClientePreviewDrawer.razor.css/
+    EmpresaPreviewDrawer.razor.css/TrabajadorPreviewDrawer.razor.css.
+*/
+.drawer-preview-vehiculo {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--color-overlay);
+    box-shadow: var(--shadow-overlay);
+    border-left: var(--border-default);
+    z-index: 1045;
+    display: flex;
+    flex-direction: column;
+    animation: preview-vehiculo-entrar var(--motion-transition) var(--ease-fluid);
+}
+
+@keyframes preview-vehiculo-entrar {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .drawer-preview-vehiculo {
+        animation: none;
+    }
+}
+
+.cabecera-preview-vehiculo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border-bottom: var(--border-default);
+    flex-shrink: 0;
+}
+
+.texto-cabecera-preview-vehiculo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.etiqueta-cabecera-preview-vehiculo {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.nombre-cabecera-preview-vehiculo {
+    font: var(--font-heading-md);
+}
+
+.boton-cerrar-preview-vehiculo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: var(--space-1);
+    flex-shrink: 0;
+}
+
+.boton-cerrar-preview-vehiculo:hover {
+    color: var(--color-text);
+}
+
+.boton-cerrar-preview-vehiculo:focus-visible {
+    outline: var(--border-focus);
+}
+
+.cuerpo-preview-vehiculo {
+    padding: 0 var(--space-5) var(--space-5);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.rejilla-info-preview-vehiculo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.celda-info-preview-vehiculo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.celda-info-preview-vehiculo span {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+.celda-info-preview-vehiculo strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.enlace-ver-todo-preview-vehiculo {
+    margin-top: var(--space-3);
+    border: 0;
+    background: none;
+    padding: 0;
+    text-align: left;
+    color: var(--color-primary-500);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.enlace-ver-todo-preview-vehiculo:hover {
+    color: var(--color-primary-600);
+}
+
+.pie-preview-vehiculo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-top: var(--border-default);
+    flex-shrink: 0;
+}
+
+.nota-pie-preview-vehiculo {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+@media (max-width: 767px) {
+    .drawer-preview-vehiculo {
+        max-width: 100%;
+    }
+}

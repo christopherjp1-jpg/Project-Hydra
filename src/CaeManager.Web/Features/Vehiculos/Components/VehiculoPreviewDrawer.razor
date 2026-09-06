@@ -1,0 +1,68 @@
+@*
+    Drawer ligero de vista previa (Vehiculos TALVEG.dc.html) — mismo patrón
+    que ClientePreviewDrawer/EmpresaPreviewDrawer/TrabajadorPreviewDrawer,
+    generalizado a Vehículos. Sin Application nuevo: ObtenerVehiculoPorIdQuery
+    ya cubre los campos de Información. Documentación/Historial reutilizan
+    PestanaDocumentacion/PestanaHistorial, igual que en el resto.
+
+    Frente al mockup: sin "Tipo de empleador" (Empresa/Subcontrata) en la
+    rejilla — VehiculoDetalleDto da el nombre del empleador pero no de cuál
+    de las dos procede — y sin recuento de documentos en la cabecera de la
+    pestaña "Documentación" — VehiculoDetalleDto no lo trae. Ver informe de
+    la sesión que implementó este panel.
+*@
+@using CaeManager.Application.Vehiculos.Queries.ObtenerVehiculoPorId
+@using CaeManager.Domain.Documentos
+
+@if (Visible)
+{
+    <aside class="drawer-preview-vehiculo" role="complementary" aria-label="Vista previa del vehículo">
+        <div class="cabecera-preview-vehiculo">
+            <div class="texto-cabecera-preview-vehiculo">
+                <span class="etiqueta-cabecera-preview-vehiculo">Consulta · Vehículo</span>
+                <span class="nombre-cabecera-preview-vehiculo">@(_detalle?.Nombre ?? "Cargando…")</span>
+            </div>
+            <button type="button" class="boton-cerrar-preview-vehiculo" aria-label="Cerrar" @onclick="Cerrar"><Icono Nombre="cerrar" /></button>
+        </div>
+
+        <div class="cuerpo-preview-vehiculo">
+        <Pestanas Definiciones="Pestanas" PestanaActiva="@_pestanaActiva" PestanaActivaChanged="CambiarPestanaAsync" EtiquetaGrupo="Secciones del vehículo">
+            @if (_cargando && _pestanaActiva == "informacion")
+            {
+                <EstadoCargando Filas="3" />
+            }
+            else if (_pestanaActiva == "informacion" && _detalle is not null)
+            {
+                <div class="rejilla-info-preview-vehiculo">
+                    <div class="celda-info-preview-vehiculo"><span>Modelo</span><strong>@_detalle.Modelo</strong></div>
+                    <div class="celda-info-preview-vehiculo"><span>Matrícula</span><strong>@_detalle.NumeroPlaca</strong></div>
+                    <div class="celda-info-preview-vehiculo"><span>Empleador</span><strong>@_detalle.EmpleadorNombre</strong></div>
+                </div>
+            }
+
+            @if (_pestanaActiva == "documentacion" && VehiculoId is { } vehiculoIdDocs)
+            {
+                <PestanaDocumentacion Ambito="AmbitoAplicacion.Vehiculo" PropietarioId="vehiculoIdDocs" />
+                <button type="button" class="enlace-ver-todo-preview-vehiculo" @onclick='() => Operar("documentacion")'>
+                    Ver toda su documentación →
+                </button>
+            }
+
+            @if (_pestanaActiva == "historial" && VehiculoId is { } vehiculoIdHist)
+            {
+                <PestanaHistorial EntidadTipo="Vehiculo" EntidadId="vehiculoIdHist" />
+            }
+        </Pestanas>
+        </div>
+
+        <div class="pie-preview-vehiculo">
+            <Boton OnClick='() => Operar("informacion")'>Operar →</Boton>
+            <span class="nota-pie-preview-vehiculo">Abre el workspace del vehículo</span>
+        </div>
+    </aside>
+}
+
+@code {
+    private static readonly IReadOnlyList<PestanaDefinicion> Pestanas =
+        [new("informacion", "Información"), new("documentacion", "Documentación"), new("historial", "Historial")];
+}

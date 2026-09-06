@@ -69,6 +69,24 @@ public partial class Vehiculos : ComponentBase
     private string _nombreAEliminar = string.Empty;
     private bool _eliminando;
 
+    // Drawer ligero (Vehiculos TALVEG.dc.html, mismo patrón que
+    // ClientePreviewDrawer/EmpresaPreviewDrawer): nombre de fila y "Ver" del
+    // menú abren esto primero, no el Context Workspace directamente.
+    private Guid? _previewVehiculoId;
+    private bool _previewVisible;
+
+    private void AbrirPreview(Guid id)
+    {
+        _previewVehiculoId = id;
+        _previewVisible = true;
+    }
+
+    private Task AbrirDesdePreviewAsync((Guid Id, string Pestana) destino)
+    {
+        var nombre = _elementosPagina.FirstOrDefault(e => e.Id == destino.Id)?.Nombre ?? string.Empty;
+        return WorkspaceService.AbrirAsync(EntidadWorkspace.Vehiculo, destino.Id, nombre, destino.Pestana);
+    }
+
     private readonly HashSet<Guid> _seleccionados = [];
 
     /// <summary>
@@ -458,11 +476,7 @@ public partial class Vehiculos : ComponentBase
                 break;
             case "Enter":
                 if (_idEnfocado is { } idAbrir)
-                {
-                    var elemento = _elementosPagina.FirstOrDefault(e => e.Id == idAbrir);
-                    if (elemento is not null)
-                        await WorkspaceService.AbrirAsync(EntidadWorkspace.Vehiculo, elemento.Id, elemento.Nombre, "informacion");
-                }
+                    AbrirPreview(idAbrir);
                 break;
         }
 
