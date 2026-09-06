@@ -1055,7 +1055,17 @@ jobs:
         run: bash deploy/liberar-disco.tests.sh
 
       # No corria en ningun sitio hasta ahora: el guion se probaba a mano.
+      #
+      # MINIMO_CLASES a vacio: el `env:` de nivel de workflow lo fija en 120
+      # para el paso REAL de reparto (mas abajo), pero aqui el propio test del
+      # guion usa un listado fijo de 4 clases para probar el reparto en si, y
+      # hereda ese mismo valor si no se anula — el suelo salta antes de que el
+      # test llegue a comprobar nada, y las 4 comprobaciones que dependen del
+      # reparto fallan con "obtenido: 0" (medido: sin este override, este paso
+      # falla incluso con el guion correcto).
       - name: scripts/repartir-clases-de-test.tests.sh
+        env:
+          MINIMO_CLASES: ""
         run: bash scripts/repartir-clases-de-test.tests.sh
 
   licencias-dependencias:
