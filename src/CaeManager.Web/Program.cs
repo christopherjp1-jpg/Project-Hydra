@@ -366,9 +366,12 @@ builder.Services.AddRateLimiter(options =>
 // siempre se han parseado por NOMBRE, así que el cliente enviaba una cadena y
 // recibía un número.
 //
-// Afecta solo a la API pública: es la única superficie que devuelve JSON
-// (verificado — el resto de endpoints devuelven archivos, redirecciones o
-// códigos de estado, y ningún JavaScript del cliente consume endpoints).
+// Ya no afecta solo a la API pública: desde el Incremento 2 del MVP1 de
+// extensión de navegador (ver ARQUITECTURA-INTEGRACIONES.md § 14 en el
+// repositorio de negocio), `/extension/acreditaciones-pendientes` también
+// devuelve JSON, y esta vez sí lo consume JavaScript de verdad (el popup de
+// la extensión, en extension/popup.js) — la razón de fondo de arriba sigue
+// aplicando igual, con un consumidor real además de la API pública.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());

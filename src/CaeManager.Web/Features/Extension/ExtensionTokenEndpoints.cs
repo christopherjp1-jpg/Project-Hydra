@@ -53,23 +53,14 @@ public static class ExtensionTokenEndpoints
             if (!Guid.TryParse(valorClaim, out var usuarioId))
                 return Results.Unauthorized();
 
-            var usuario = await userManager.FindByIdAsync(usuarioId.ToString());
-            if (usuario is null)
-                return Results.Unauthorized();
+            var resultado = await EmisorTokenExtension.EmitirAsync(usuarioId, userManager, dataProtectionProvider);
+            if (resultado.EsFallido)
+                return resultado.Error.Codigo == "Extension.UsuarioNoEncontrado"
+                    ? Results.Unauthorized()
+                    : Results.Problem(resultado.Error.Mensaje, statusCode: StatusCodes.Status409Conflict);
 
-            // Un usuario sin security stamp no puede recibir token: sin él, el
-            // handler no tendría con qué revocarlo. Se rechaza en vez de
-            // generarlo aquí — emitir un stamp es un efecto sobre la cuenta, y
-            // este endpoint no está para tocar cuentas.
-            if (string.IsNullOrWhiteSpace(usuario.SecurityStamp))
-                return Results.Problem(
-                    "La cuenta no puede conectar la extensión todavía. Cambia la contraseña para completar su activación.",
-                    statusCode: StatusCodes.Status409Conflict);
-
-            var token = TokenSesionExtension.Proteger(dataProtectionProvider, usuarioId, usuario.SecurityStamp);
-
-            return Results.Ok(new TokenExtensionRespuesta(
-                token, DateTime.UtcNow.Add(TokenSesionExtension.Vigencia)));
+            var (token, expiraEnUtc) = resultado.Valor;
+            return Results.Ok(new TokenExtensionRespuesta(token, expiraEnUtc));
         });
 
         return endpoints;

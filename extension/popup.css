@@ -1,0 +1,89 @@
+body {
+  width: 320px;
+  margin: 0;
+  padding: 12px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+label {
+  display: block;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  margin-top: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button.enlace {
+  background: none;
+  border: none;
+  color: #0b5cff;
+  text-decoration: underline;
+  padding: 0;
+  margin: 0 0 0 6px;
+  font-size: inherit;
+}
+
+.error {
+  color: #b3261e;
+  margin-top: 6px;
+}
+
+.estado-conexion {
+  color: #555;
+}
+
+details {
+  margin-top: 10px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.grupo-cliente {
+  margin: 6px 0 6px 10px;
+}
+
+.titulo-cliente {
+  margin: 4px 0;
+  color: #555;
+}
+
+.fila-documento {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.fila-documento button {
+  margin: 0;
+}
+
+.fila-completada {
+  opacity: 0.6;
+}
