@@ -1,7 +1,12 @@
 @page "/not-found"
-@layout MainLayout
+@* Antes @layout MainLayout: se pintaba con menú lateral y barra superior
+   pese a no llevar sesión garantizada ([AllowAnonymous]). Estados Sistema
+   TALVEG.dc.html la lleva centrada y sin menú, como Error — mismo
+   AuthLayout, mismo motivo: no prometer una navegación que la ruta anónima
+   puede no tener. *@
+@layout CaeManager.Web.Components.Layout.AuthLayout
 @attribute [AllowAnonymous]
 
-<div class="contenedor-pagina">
-    <EstadoVacio Titulo="No encontramos esta página" Descripcion="Comprueba la dirección o vuelve al Dashboard." />
-</div>
+<PageTitle>Página no encontrada — @Marca.Nombre</PageTitle>
+
+<PaginaEstadoSistema Tipo="TipoEstadoSistema.NoEncontrado" />

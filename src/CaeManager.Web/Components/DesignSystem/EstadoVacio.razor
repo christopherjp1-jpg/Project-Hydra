@@ -1,5 +1,5 @@
 <div class="estado-vacio">
-    <div class="estado-vacio-icono" aria-hidden="true">
+    <div class="estado-vacio-icono @(EsAcento ? "estado-vacio-icono-acento" : null)" style="@EstiloAcento" aria-hidden="true">
         @if (Icono is not null)
         {
             @Icono
@@ -38,4 +38,23 @@
     /// ninguna de las páginas consumidoras llegó a rellenar el slot.
     /// </summary>
     [Parameter] public string? NombreIcono { get; set; }
+
+    /// <summary>
+    /// Color de acento del círculo del icono (borde y trazo) para estados que
+    /// necesitan comunicar severidad —error, aviso, bloqueo— sin salirse del
+    /// catálogo de iconos ni inventar un componente nuevo por pantalla. Token
+    /// CSS completo, p. ej. <c>"var(--color-danger-500)"</c>. Sin valor, el
+    /// icono se pinta como hasta ahora: gris, sin círculo (los 7 consumidores
+    /// existentes no cambian).
+    /// </summary>
+    [Parameter] public string? AcentoIcono { get; set; }
+
+    /// <summary>Relleno del círculo cuando hay <see cref="AcentoIcono"/>. Sin valor, transparente.</summary>
+    [Parameter] public string? FondoIcono { get; set; }
+
+    private bool EsAcento => !string.IsNullOrEmpty(AcentoIcono);
+
+    private string? EstiloAcento => EsAcento
+        ? $"--estado-vacio-acento:{AcentoIcono};--estado-vacio-fondo-icono:{FondoIcono ?? "transparent"};"
+        : null;
 }

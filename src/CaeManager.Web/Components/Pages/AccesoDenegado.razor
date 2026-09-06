@@ -1,14 +1,13 @@
 @page "/acceso-denegado"
-@rendermode InteractiveServer
-@layout MainLayout
+@* Antes @layout MainLayout + @rendermode InteractiveServer (Boton solo
+   navegaba vía OnClick + NavigationManager, lo que exigía un circuito
+   interactivo para un simple enlace). Estados Sistema TALVEG.dc.html pide
+   centrada y sin menú — mismo AuthLayout que Error/NotFound, y evita además
+   que el menú lateral siga ofreciendo la sección que se acaba de denegar.
+   Boton ahora navega con Href (ancla real): sin circuito interactivo. *@
+@layout CaeManager.Web.Components.Layout.AuthLayout
 @attribute [Authorize]
-@inject NavigationManager Navigation
 
-<div class="contenedor-pagina">
-    <EstadoVacio Titulo="No tienes permiso para ver esta sección"
-                 Descripcion="Si crees que es un error, contacta a un administrador.">
-        <Accion>
-            <Boton OnClick="@(() => Navigation.NavigateTo("/"))">Ir al Dashboard</Boton>
-        </Accion>
-    </EstadoVacio>
-</div>
+<PageTitle>Acceso denegado — @Marca.Nombre</PageTitle>
+
+<PaginaEstadoSistema Tipo="TipoEstadoSistema.AccesoDenegado" />

@@ -1,0 +1,137 @@
+/* Centrado vertical y el fondo ya los pone AuthLayout (min-height:100vh,
+   display:flex, align-items/justify-content:center) — las tres páginas que
+   usan este componente van con @layout AuthLayout, la misma pieza que ya
+   centraba Login/PendienteDeRol. Este componente solo apila sus tres bloques
+   (marca, tarjeta, pie legal) dentro de ese hueco. */
+.pagina-estado-sistema {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-8);
+    text-align: center;
+}
+
+.marca-estado-sistema {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text);
+}
+
+.marca-estado-sistema:hover {
+    color: var(--color-text);
+}
+
+.marca-estado-sistema-marca {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-primary-500);
+}
+
+.marca-estado-sistema-nombre {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+/* El div que pinta <Tarjeta> es de Tarjeta.razor, no de este componente: el
+   contenido que le pasamos como ChildContent conserva el scope de ESTE
+   archivo, pero el propio contenedor con la clase que le pasamos por
+   Class="..." es de Tarjeta. ::deep es la misma técnica que ya usa
+   EstadoVacio.razor.css para alcanzar el <svg> que pinta <Icono>. */
+::deep .tarjeta-estado-sistema {
+    width: 100%;
+    max-width: 560px;
+    box-shadow: var(--shadow-overlay);
+}
+
+::deep .tarjeta-estado-sistema-error {
+    border-top: 3px solid var(--color-danger-500);
+}
+
+::deep .tarjeta-estado-sistema-no-encontrado {
+    border-top: 3px solid var(--color-border-strong);
+}
+
+::deep .tarjeta-estado-sistema-acceso-denegado {
+    border-top: 3px solid var(--color-info-500);
+}
+
+.referencia-tecnica-estado-sistema {
+    width: 100%;
+    margin-top: var(--space-2);
+    background-color: var(--color-surface-subtle);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    text-align: left;
+}
+
+.referencia-tecnica-etiqueta {
+    flex: none;
+    font: var(--font-caption);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.referencia-tecnica-valor {
+    flex: 1;
+    min-width: 0;
+    font: 600 0.8125rem/1.125rem var(--font-family);
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.referencia-tecnica-ayuda {
+    font: var(--font-caption);
+    color: var(--color-text-muted);
+    max-width: 52ch;
+    margin: 0;
+}
+
+.aviso-permisos-estado-sistema {
+    width: 100%;
+    margin-top: var(--space-2);
+    background-color: var(--color-info-50);
+    border: var(--border-default);
+    border-left: 3px solid var(--color-info-500);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font: var(--font-body-md);
+    color: var(--color-text-muted);
+}
+
+.acciones-estado-sistema {
+    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.pie-legal-estado-sistema {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font: var(--font-caption);
+    color: var(--color-text-muted);
+}
+
+.pie-legal-estado-sistema a {
+    font: var(--font-caption);
+    color: var(--color-text-muted);
+}
+
+.pie-legal-estado-sistema a:hover {
+    color: var(--color-text);
+}

@@ -6,30 +6,22 @@
    layout vuelve a golpear la misma base y agota otros 6 reintentos antes de
    poder mostrar el mensaje (Sentry DOTNET-8). AuthLayout no toca datos — es
    el mismo layout que ya usan las páginas [AllowAnonymous] sin sesión
-   (Login, TerminosCondiciones). *@
+   (Login, TerminosCondiciones), y es también el que exige el rediseño
+   (Estados Sistema TALVEG.dc.html): centrada, sin menú lateral ni barra
+   superior. *@
 @layout CaeManager.Web.Components.Layout.AuthLayout
 @attribute [AllowAnonymous]
 @using System.Diagnostics
 
 <PageTitle>Error — @Marca.Nombre</PageTitle>
 
-<div class="contenedor-pagina">
-    <EstadoVacio
-        Titulo="Ocurrió un error inesperado"
-        Descripcion="No pudimos completar tu solicitud. Intenta nuevamente en unos segundos." />
-
-    @if (ShowRequestId)
-    {
-        <p class="detalle-tecnico">Referencia técnica: <code>@RequestId</code></p>
-    }
-</div>
+<PaginaEstadoSistema Tipo="TipoEstadoSistema.Error" ReferenciaTecnica="@RequestId" />
 
 @code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
     private string? RequestId { get; set; }
-    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
     protected override void OnInitialized() =>
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;

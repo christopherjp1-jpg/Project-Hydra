@@ -1,14 +1,42 @@
-<button type="@Type"
-        class="@ClaseCompleta"
-        disabled="@(Deshabilitado || Cargando)"
-        @onclick="OnClick"
-        @attributes="AtributosSinClase">
-    @if (Cargando)
-    {
-        <span class="boton-spinner" aria-hidden="true"></span>
-    }
-    @ChildContent
-</button>
+@if (!string.IsNullOrEmpty(Href) && !Deshabilitado)
+{
+    <a href="@Href"
+       class="@ClaseCompleta"
+       @attributes="AtributosSinClase">
+        @ChildContent
+    </a>
+}
+else if (!string.IsNullOrEmpty(OnClickScript))
+{
+    @* "onclick" plano y "@onclick" (delegado de servidor) son, para Razor, el
+       MISMO atributo del elemento — RZ10008 si aparecen los dos a la vez.
+       Nunca conviven: si hay OnClickScript, no hace falta @onclick. *@
+    <button type="@Type"
+            class="@ClaseCompleta"
+            disabled="@(Deshabilitado || Cargando)"
+            onclick="@OnClickScript"
+            @attributes="AtributosSinClase">
+        @if (Cargando)
+        {
+            <span class="boton-spinner" aria-hidden="true"></span>
+        }
+        @ChildContent
+    </button>
+}
+else
+{
+    <button type="@Type"
+            class="@ClaseCompleta"
+            disabled="@(Deshabilitado || Cargando)"
+            @onclick="OnClick"
+            @attributes="AtributosSinClase">
+        @if (Cargando)
+        {
+            <span class="boton-spinner" aria-hidden="true"></span>
+        }
+        @ChildContent
+    </button>
+}
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -18,6 +46,27 @@
     [Parameter] public bool Cargando { get; set; }
     [Parameter] public string Type { get; set; } = "button";
     [Parameter] public EventCallback OnClick { get; set; }
+
+    /// <summary>
+    /// Navegación real: si viene informado (y el botón no está deshabilitado),
+    /// se pinta como &lt;a&gt; con las mismas clases — mismo aspecto, semántica
+    /// de enlace correcta (abrir en pestaña nueva, vista previa de URL) y sin
+    /// exigir @rendermode interactivo solo para ir a otra ruta. Pensado para
+    /// páginas sin sesión interactiva (Error, 404, Acceso denegado): antes de
+    /// esto, "botón que navega" solo existía envolviendo NavigationManager en
+    /// un OnClick, lo que forzaba InteractiveServer para un simple enlace.
+    /// Incompatible con OnClick/Cargando: usar solo para "ir a X".
+    /// </summary>
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>
+    /// Script JS plano (p. ej. "window.location.reload()") para acciones que
+    /// no necesitan al servidor y por tanto tampoco @rendermode interactivo.
+    /// Se renderiza como atributo "onclick" nativo, distinto de OnClick (que
+    /// es el delegado de servidor vía @onclick) — un botón usa uno u otro,
+    /// nunca los dos con sentido.
+    /// </summary>
+    [Parameter] public string? OnClickScript { get; set; }
 
     /// <summary>
     /// Attribute splatting (P2 #28 de docs/business/MATURITY_REVIEW.md): deja
