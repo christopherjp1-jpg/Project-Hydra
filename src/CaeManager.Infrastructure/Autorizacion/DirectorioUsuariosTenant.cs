@@ -1,5 +1,6 @@
 using CaeManager.Application.Common;
 using CaeManager.Application.Tenants;
+using CaeManager.Domain.Operaciones;
 using CaeManager.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -247,6 +248,90 @@ public class DirectorioUsuariosTenant(
             && await identidad.Users.AnyAsync(
                 u => u.Id == usuarioId && u.TenantId == tenantId, cancellationToken));
 
+    /// <summary>
+    /// La cartera vigente de cada usuario <b>sobre el tenant activo</b>, para
+    /// que la lista de usuarios pueda decir qué alcanza cada cuenta. Un Gestor
+    /// CAE sin Asignación de Cartera vigente no ve absolutamente nada —y es
+    /// correcto que así sea—, pero hasta ahora su fila era indistinguible de la
+    /// de un gestor con cartera, que es justo la pregunta que se hace quien
+    /// abre esa pantalla.
+    ///
+    /// <para>
+    /// <b>Filtro de posición</b> (ADR-011 § 2.7, endurecimiento E1). Los dos
+    /// catálogos de asignación están fuera del filtro global de tenant, así que
+    /// la acotación es explícita y de dos mitades, las mismas que impone
+    /// <c>AlcanceDatosService</c>:
+    /// <list type="bullet">
+    /// <item><b>Propietario</b>: solo carteras cuyo <c>PropietarioTenantId</c>
+    /// es el tenant activo. Quien llama es Administrador o Dirección CAE de ese
+    /// tenant, es decir, ocupa la posición de propietario de esos datos y puede
+    /// saber quién opera sobre ellos.</item>
+    /// <item><b>Operador</b>: la operación que ampara cada cartera tiene que
+    /// estar operada por el tenant de ORIGEN del usuario de esa cartera. Es el
+    /// mismo invariante que documenta
+    /// <c>IDirectorioUsuariosService.ObtenerTenantDeUsuarioAsync</c>, aplicado
+    /// aquí a cada fila en vez de al llamante: sin él, una cartera mal formada
+    /// cuyo propietario casara con el tenant activo contaría como alcance de
+    /// alguien que no ocupa esa posición.</item>
+    /// </list>
+    /// A diferencia de <c>AlcanceDatosService</c>, el operador no sale del claim
+    /// de sesión —que es el de quien mira— sino del tenant de cada usuario
+    /// listado, porque aquí la pregunta es por el alcance de OTROS.
+    /// </para>
+    ///
+    /// <para>
+    /// Vigencia en los dos niveles: una cartera viva bajo una operación cerrada
+    /// o caducada no concede nada, y el cierre en cascada puede no haber
+    /// corrido todavía si la operación venció por fecha.
+    /// </para>
+    ///
+    /// <para>
+    /// Un usuario sin ninguna cartera vigente no aparece en el diccionario. La
+    /// ausencia significa alcance cero, no falta de resolución: es una consulta
+    /// única sobre todo el tenant, no una por usuario.
+    /// </para>
+    /// </summary>
+    public Task<IReadOnlyDictionary<Guid, CarteraDeUsuario>> ObtenerCarterasVigentesAsync(
+        CancellationToken cancellationToken = default) =>
+        puertaAccesoDatos.EjecutarAsync<IReadOnlyDictionary<Guid, CarteraDeUsuario>>(async () =>
+        {
+            if (tenantActual.TenantId is not { } propietarioTenantId)
+                return new Dictionary<Guid, CarteraDeUsuario>();
+
+            var ahora = DateTime.UtcNow;
+
+            var ambitos = await (
+                from cartera in identidad.AsignacionesCartera
+                where cartera.PropietarioTenantId == propietarioTenantId
+                      && cartera.Estado == EstadoAsignacion.Vigente
+                      && cartera.VigenciaDesde <= ahora
+                      && (cartera.VigenciaHasta == null || ahora < cartera.VigenciaHasta)
+                join operacion in identidad.AsignacionesOperacion
+                    on cartera.AsignacionOperacionId equals operacion.Id
+                where operacion.Estado == EstadoAsignacion.Vigente
+                      && operacion.VigenciaDesde <= ahora
+                      && (operacion.VigenciaHasta == null || ahora < operacion.VigenciaHasta)
+                join usuario in identidad.Users on cartera.UsuarioId equals usuario.Id
+                where operacion.OperadorTenantId == usuario.TenantId
+                select new { cartera.UsuarioId, cartera.AmbitoRelacionClienteId })
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            return ambitos
+                .GroupBy(a => a.UsuarioId)
+                .ToDictionary(
+                    grupo => grupo.Key,
+                    grupo => new CarteraDeUsuario(
+                        // Ámbito sin dimensión ninguna: toda la operación de
+                        // ESTE tenant, nunca más allá — ver AmbitoAsignacion.
+                        EsUniversal: grupo.Any(a => a.AmbitoRelacionClienteId is null),
+                        ClienteIds: grupo
+                            .Where(a => a.AmbitoRelacionClienteId is not null)
+                            .Select(a => a.AmbitoRelacionClienteId!.Value)
+                            .Distinct()
+                            .ToList()));
+        }, cancellationToken);
+
     private async Task<Dictionary<Guid, string>> ObtenerRolesDeOperadoresDelegadosAsync(Guid tenantId, CancellationToken cancellationToken) =>
         await (
             from asignacion in dbContext.AsignacionesOperadorDelegado
@@ -258,3 +343,11 @@ public class DirectorioUsuariosTenant(
             .Distinct()
             .ToDictionaryAsync(x => x.UsuarioId, x => x.Rol, cancellationToken);
 }
+
+/// <summary>
+/// Lo que una persona alcanza dentro de un tenant por sus Asignaciones de
+/// Cartera vigentes. <c>EsUniversal</c> no significa "todo el sistema": es todo
+/// el ámbito operativo de esa asignación dentro de su terna (propietario,
+/// servicio, asignación) — ver <c>AmbitoAsignacion</c>.
+/// </summary>
+public record CarteraDeUsuario(bool EsUniversal, IReadOnlyList<Guid> ClienteIds);

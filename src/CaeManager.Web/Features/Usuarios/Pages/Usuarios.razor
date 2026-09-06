@@ -71,6 +71,7 @@
                     <th>Correo</th>
                     <th>Nombre</th>
                     <th>Rol</th>
+                    <th>Alcance</th>
                     <th>Estado</th>
                     <th></th>
                 </tr>
@@ -92,6 +93,22 @@
                                        title="Opera esta organización desde otra mediante una delegación; el rol mostrado es el de su asignación aquí, no el de su organización de origen.">
                                     Delegado
                                 </Badge>
+                            }
+                        </td>
+                        @* Qué ve esta cuenta. Sin esta columna, un Gestor CAE
+                           sin cartera tiene una fila idéntica a la de uno con
+                           cartera, y el "no veo nada" que reporta no tiene
+                           respuesta en ninguna pantalla. *@
+                        <td title="@usuario.Alcance.Explicacion">
+                            @if (usuario.Alcance.EsAviso)
+                            {
+                                <Badge Tono="TonoBadge.Advertencia" Tamano="TamanoBadge.Pequeno">
+                                    @usuario.Alcance.Texto
+                                </Badge>
+                            }
+                            else
+                            {
+                                @usuario.Alcance.Texto
                             }
                         </td>
                         <td>
