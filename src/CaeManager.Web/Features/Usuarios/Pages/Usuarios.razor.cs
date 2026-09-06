@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using CaeManager.Application.Clientes.Queries.ObtenerClientePorId;
 using CaeManager.Application.Empresas.Queries.BuscarEmpresaPorCif;
@@ -59,8 +60,113 @@ public partial class Usuarios : CaeManager.Web.Components.PaginaIntegrableConfig
 
     private int _pagina = 1;
 
-    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(_usuarios.Count / (double)_tamanoPagina));
-    private IReadOnlyList<UsuarioListaDto> UsuariosDePagina => _usuarios.Skip((_pagina - 1) * _tamanoPagina).Take(_tamanoPagina).ToList();
+    private string _busqueda = string.Empty;
+    private string _rolFiltro = string.Empty;
+    private string _activacionFiltro = string.Empty;
+
+    private static readonly IReadOnlyList<OpcionEstado> OpcionesRol =
+        Roles.Todos.Select(rol => new OpcionEstado(rol, Roles.NombreVisible(rol))).ToList();
+
+    private const string ActivacionActivos = "activos";
+    private const string ActivacionDesactivados = "desactivados";
+
+    private static readonly IReadOnlyList<OpcionEstado> OpcionesActivacion =
+    [
+        new(ActivacionActivos, "Activos"),
+        new(ActivacionDesactivados, "Desactivados")
+    ];
+
+    /// <summary>
+    /// El filtrado es en memoria a propósito: <see cref="CargarAsync"/> ya trae
+    /// la lista entera de usuarios del tenant —son decenas, no miles— y la
+    /// paginación también es de cliente. Llevarlo a consulta obligaría a
+    /// rehacer una carga que no pasa por MediatR sino por UserManager, y no
+    /// ganaría nada.
+    ///
+    /// <para>
+    /// El rol que se compara es el de <see cref="UsuarioListaDto"/>, que para
+    /// un Operador Delegado es el de su asignación aquí y no el de su
+    /// organización de origen — filtrar por "Gestor CAE" tiene que devolver a
+    /// quien opera como tal en esta organización, que es lo que la fila dice.
+    /// </para>
+    /// </summary>
+    private IReadOnlyList<UsuarioListaDto> UsuariosFiltrados
+    {
+        get
+        {
+            IEnumerable<UsuarioListaDto> filtrados = _usuarios;
+
+            if (!string.IsNullOrWhiteSpace(_busqueda))
+            {
+                var termino = _busqueda.Trim();
+                filtrados = filtrados.Where(u => Contiene(u.NombreCompleto, termino) || Contiene(u.Email, termino));
+            }
+
+            if (!string.IsNullOrWhiteSpace(_rolFiltro))
+                filtrados = filtrados.Where(u => u.Rol == _rolFiltro);
+
+            filtrados = _activacionFiltro switch
+            {
+                ActivacionActivos => filtrados.Where(u => u.Activo),
+                ActivacionDesactivados => filtrados.Where(u => !u.Activo),
+                _ => filtrados
+            };
+
+            return filtrados.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Ignora mayúsculas <b>y</b> acentos: quien teclea "martinez" espera
+    /// encontrar a "Martínez". Con <c>OrdinalIgnoreCase</c> no lo encontraría y
+    /// el fallo sería mudo — la lista sale vacía y parece que esa persona no
+    /// existe, que es exactamente el error que lleva a crearla dos veces.
+    ///
+    /// <para>
+    /// Público solo para poder probarlo: montar la página entera en bUnit
+    /// exigiría registrar UserManager, MediatR, Identity y el directorio de
+    /// tenant para comprobar una función pura de dos cadenas.
+    /// </para>
+    /// </summary>
+    public static bool Contiene(string texto, string termino) =>
+        !string.IsNullOrEmpty(texto)
+        && CultureInfo.InvariantCulture.CompareInfo.IndexOf(
+            texto, termino, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(UsuariosFiltrados.Count / (double)_tamanoPagina));
+    private IReadOnlyList<UsuarioListaDto> UsuariosDePagina => UsuariosFiltrados.Skip((_pagina - 1) * _tamanoPagina).Take(_tamanoPagina).ToList();
+
+    // Todo cambio de filtro vuelve a la página 1: si no, filtrar estando en la
+    // página 3 deja la lista en una página que ya no existe y se ve vacía.
+    private Task BuscarAsync(string valor)
+    {
+        _busqueda = valor;
+        _pagina = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task FiltrarPorRolAsync(string valor)
+    {
+        _rolFiltro = valor;
+        _pagina = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task FiltrarPorActivacionAsync(string valor)
+    {
+        _activacionFiltro = valor;
+        _pagina = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task LimpiarFiltrosAsync()
+    {
+        _busqueda = string.Empty;
+        _rolFiltro = string.Empty;
+        _activacionFiltro = string.Empty;
+        _pagina = 1;
+        return Task.CompletedTask;
+    }
 
     private Task IrAPaginaAsync(int pagina)
     {

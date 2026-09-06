@@ -15,6 +15,26 @@
         <Boton OnClick="AbrirCrear">+ Nuevo usuario</Boton>
     </div>
 
+    @* Mismo sitio y misma composición que las demás listas (list-page.css
+       ".barra-filtros"): buscador a la izquierda, filtros a su derecha, nunca
+       escondidos tras un menú. Se filtra en memoria — ver UsuariosFiltrados.
+
+       Solo se pinta cuando hay algo que filtrar: sobre el error de carga
+       mentiría (no hay lista sobre la que actuar) y sobre una organización
+       recién creada serían tres controles que no pueden hacer nada. A
+       diferencia de Empresas, aquí filtrar no es una consulta al servidor
+       que pueda devolver cero de por sí. *@
+    @if (!_errorCarga && !_cargando && _usuarios.Count > 0)
+    {
+        <div class="barra-filtros">
+            <CampoTexto Placeholder="Buscar por nombre o correo…" Valor="@_busqueda" ValorChanged="BuscarAsync" />
+            <FiltroEstado Etiqueta="Rol" Valor="@_rolFiltro" ValorChanged="FiltrarPorRolAsync"
+                          Opciones="OpcionesRol" />
+            <FiltroEstado Etiqueta="Estado" Valor="@_activacionFiltro" ValorChanged="FiltrarPorActivacionAsync"
+                          Opciones="OpcionesActivacion" />
+        </div>
+    }
+
     @if (_errorCarga)
     {
         <EstadoVacio Titulo="No pudimos cargar los usuarios" Descripcion="Intenta nuevamente en unos segundos.">
@@ -26,6 +46,22 @@
     else if (_cargando)
     {
         <EstadoCargando Filas="6" />
+    }
+    else if (_usuarios.Count == 0)
+    {
+        <EstadoVacio Titulo="Aún no hay usuarios" Descripcion="Crea el primero para dar acceso al sistema." />
+    }
+    else if (UsuariosFiltrados.Count == 0)
+    {
+        @* Distinto de "aún no hay usuarios": los hay, pero ninguno casa con lo
+           filtrado. Decirle "crea el primero" a quien tiene cuarenta y ha
+           tecleado mal un apellido es mandarlo a duplicar una cuenta. *@
+        <EstadoVacio Titulo="Ningún usuario coincide"
+                     Descripcion="Prueba con otro texto, o quita los filtros de rol y estado.">
+            <Accion>
+                <Boton Variante="VarianteBoton.Secundario" OnClick="LimpiarFiltrosAsync">Quitar filtros</Boton>
+            </Accion>
+        </EstadoVacio>
     }
     else
     {
@@ -86,16 +122,9 @@
             </tbody>
         </table>
 
-        @if (_usuarios.Count == 0)
-        {
-            <EstadoVacio Titulo="Aún no hay usuarios" Descripcion="Crea el primero para dar acceso al sistema." />
-        }
-        else
-        {
-            <PaginadorSimple PaginaActual="_pagina" TotalPaginas="TotalPaginas" TotalElementos="_usuarios.Count"
-                              Etiqueta="usuario(s)" PaginaActualChanged="IrAPaginaAsync"
-                              TamanoPagina="_tamanoPagina" TamanoPaginaChanged="CambiarTamanoPaginaAsync" />
-        }
+        <PaginadorSimple PaginaActual="_pagina" TotalPaginas="TotalPaginas" TotalElementos="UsuariosFiltrados.Count"
+                          Etiqueta="usuario(s)" PaginaActualChanged="IrAPaginaAsync"
+                          TamanoPagina="_tamanoPagina" TamanoPaginaChanged="CambiarTamanoPaginaAsync" />
     }
 </div>
 
