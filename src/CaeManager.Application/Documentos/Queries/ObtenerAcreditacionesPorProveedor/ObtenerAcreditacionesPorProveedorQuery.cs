@@ -21,6 +21,15 @@ namespace CaeManager.Application.Documentos.Queries.ObtenerAcreditacionesPorProv
 /// canal) → Documento, con el último motivo de rechazo si lo hay. Mismo
 /// alcance por Centro que ObtenerPendientePorPlataformaQuery (la unidad real
 /// de "dónde hay que subir esto" es el CanalGestionDocumental).
+///
+/// Segundo consumidor (Incremento 2 del MVP1 de extensión de navegador, ver
+/// ARQUITECTURA-INTEGRACIONES.md § 14 en el repositorio de negocio):
+/// <c>AcreditacionesPendientesEndpoints</c> expone esta misma query sin
+/// duplicar su alcance por cartera ni su agrupación por proveedor — solo
+/// necesitó dos campos más en <see cref="AcreditacionDrillDownDto"/> que la
+/// UI de drill-down no pedía (<see cref="AcreditacionDrillDownDto.CanalGestionDocumentalId"/>
+/// para el Incremento 3, y <see cref="AcreditacionDrillDownDto.TrabajadorDni"/>
+/// para el emparejamiento de identidad de la propia extensión).
 /// </summary>
 public record ObtenerAcreditacionesPorProveedorQuery : IRequest<IReadOnlyList<ProveedorAcreditacionesDto>>;
 
@@ -33,7 +42,8 @@ public record ClienteAcreditacionesDto(Guid ClienteId, string ClienteNombre, IRe
 public record AcreditacionDrillDownDto(
     Guid AcreditacionId, Guid DocumentoId, string PropietarioNombre, string TipoDocumentoNombre,
     EstadoAcreditacion Estado, string? UltimoMotivoRechazo,
-    Guid? TrabajadorId = null, Guid? EmpresaId = null, Guid? CentroId = null, Guid? TipoDocumentoId = null);
+    Guid? TrabajadorId = null, Guid? EmpresaId = null, Guid? CentroId = null, Guid? TipoDocumentoId = null,
+    Guid? CanalGestionDocumentalId = null, string? TrabajadorDni = null);
 
 public class ObtenerAcreditacionesPorProveedorQueryHandler(
     IDocumentosQueryContext documentosContext, ICentrosQueryContext centrosContext,
@@ -65,6 +75,7 @@ public class ObtenerAcreditacionesPorProveedorQueryHandler(
                 acreditacion.DocumentoId,
                 acreditacion.Estado,
                 ProveedorId = canal.ProveedorPlataformaCaeId,
+                CanalGestionDocumentalId = canal.Id,
                 CentroId = centro.Id,
                 centro.ClienteId,
                 documento.TrabajadorId,
@@ -91,7 +102,7 @@ public class ObtenerAcreditacionesPorProveedorQueryHandler(
         var trabajadorIds = filas.Where(f => f.TrabajadorId is not null).Select(f => f.TrabajadorId!.Value).Distinct().ToList();
         var trabajadores = await trabajadoresContext.Trabajadores
             .Where(t => trabajadorIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Nombre + " " + t.Apellidos, cancellationToken);
+            .ToDictionaryAsync(t => t.Id, t => (Nombre: t.Nombre + " " + t.Apellidos, t.Dni), cancellationToken);
 
         var empresaIds = filas.Where(f => f.EmpresaId is not null).Select(f => f.EmpresaId!.Value).Distinct().ToList();
         var empresas = await empresasContext.Empresas
@@ -107,9 +118,17 @@ public class ObtenerAcreditacionesPorProveedorQueryHandler(
             .ToDictionaryAsync(x => x.AcreditacionId, x => x.Motivo, cancellationToken);
 
         string PropietarioNombre(Guid? trabajadorId, Guid? empresaId) =>
-            trabajadorId is { } tId && trabajadores.TryGetValue(tId, out var nombreTrabajador) ? nombreTrabajador
+            trabajadorId is { } tId && trabajadores.TryGetValue(tId, out var trabajador) ? trabajador.Nombre
             : empresaId is { } eId && empresas.TryGetValue(eId, out var nombreEmpresa) ? nombreEmpresa
             : "—";
+
+        // Solo un Documento de Trabajador tiene NIF/NIE que emparejar — el de
+        // Empresa no lo necesita (ARQUITECTURA-INTEGRACIONES.md § 14.5 del
+        // repositorio de negocio: la extensión empareja por NIF, nunca por
+        // nombre, para no subir el documento de un trabajador a la ficha de
+        // otro).
+        string? TrabajadorDni(Guid? trabajadorId) =>
+            trabajadorId is { } tId && trabajadores.TryGetValue(tId, out var trabajador) ? trabajador.Dni : null;
 
         return filas
             .Where(f => f.ProveedorId is not null)
@@ -125,7 +144,8 @@ public class ObtenerAcreditacionesPorProveedorQueryHandler(
                         g.Select(f => new AcreditacionDrillDownDto(
                                 f.Id, f.DocumentoId, PropietarioNombre(f.TrabajadorId, f.EmpresaId), f.TipoDocumentoNombre,
                                 f.Estado, motivosPorAcreditacion.GetValueOrDefault(f.Id),
-                                f.TrabajadorId, f.EmpresaId, f.CentroId, f.TipoDocumentoId))
+                                f.TrabajadorId, f.EmpresaId, f.CentroId, f.TipoDocumentoId,
+                                f.CanalGestionDocumentalId, TrabajadorDni(f.TrabajadorId)))
                             .OrderBy(d => d.PropietarioNombre)
                             .ToList()))
                     .OrderBy(c => c.ClienteNombre)
