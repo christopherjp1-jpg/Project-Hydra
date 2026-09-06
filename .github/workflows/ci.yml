@@ -215,7 +215,7 @@ jobs:
 
       - name: Publicar el log de PostgreSQL del bloque
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: postgres-log-bloque-${{ matrix.bloque }}
           path: postgres-bloque-${{ matrix.bloque }}.log
@@ -250,7 +250,7 @@ jobs:
       # caería muy por debajo del umbral, que es justo lo que un gate no debe
       # hacer — cambiar de significado sin que nadie lo decida.
       - name: Publicar la cobertura del bloque
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cobertura-integracion-${{ matrix.bloque }}
           path: coverage/integration
@@ -262,7 +262,7 @@ jobs:
       # los cuatro en verde y nadie mirando. Es una perdida parcial y muda,
       # peor que un bloque entero vacio porque no se nota.
       - name: Publicar el reparto del bloque
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reparto-bloque-${{ matrix.bloque }}
           path: reparto
@@ -310,7 +310,7 @@ jobs:
 
 
       - name: Publicar la cobertura de Domain y Application
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cobertura-unitarios
           path: coverage
@@ -779,7 +779,7 @@ jobs:
 
       - name: Publicar logs de CaeManager.Web si el E2E falla
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: logs-caemanager-web-e2e
           path: |
