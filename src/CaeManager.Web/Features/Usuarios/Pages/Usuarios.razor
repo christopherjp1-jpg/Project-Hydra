@@ -45,7 +45,19 @@
                     <tr>
                         <td>@usuario.Email</td>
                         <td>@usuario.NombreCompleto</td>
-                        <td>@Roles.NombreVisible(usuario.Rol)</td>
+                        <td>
+                            @Roles.NombreVisible(usuario.Rol)
+                            @if (usuario.EsOperadorDelegado)
+                            {
+                                @* El rol mostrado es el de su asignación en esta organización,
+                                   no el que tiene en la suya. Sin esta marca la fila es
+                                   indistinguible de la de un usuario propio. *@
+                                <Badge Tono="TonoBadge.Info" Tamano="TamanoBadge.Pequeno"
+                                       title="Opera esta organización desde otra mediante una delegación; el rol mostrado es el de su asignación aquí, no el de su organización de origen.">
+                                    Delegado
+                                </Badge>
+                            }
+                        </td>
                         <td>
                             @if (usuario.Activo)
                             {
@@ -56,13 +68,18 @@
                                 <Badge Tono="TonoBadge.Peligro">Desactivado</Badge>
                             }
                         </td>
-                        <td>
-                            <Boton Variante="VarianteBoton.Fantasma" Tamano="TamanoBoton.Pequeno" OnClick="() => AbrirEditarAsync(usuario.Id)">
-                                Editar
-                            </Boton>
-                            <Boton Variante="VarianteBoton.Fantasma" Tamano="TamanoBoton.Pequeno" OnClick="() => CambiarActivacionAsync(usuario)">
-                                @(usuario.Activo ? "Desactivar" : "Reactivar")
-                            </Boton>
+                        <td class="columna-accion">
+                            @* Las dos acciones se agrupan tras "⋯" (H2 del design system):
+                               antes ocupaban dos botones fantasma en línea que competían
+                               visualmente y estiraban la fila. *@
+                            <MenuAcciones>
+                                <ItemMenuAccion OnClick="() => AbrirEditarAsync(usuario.Id)">
+                                    Editar
+                                </ItemMenuAccion>
+                                <ItemMenuAccion OnClick="() => CambiarActivacionAsync(usuario)">
+                                    @(usuario.Activo ? "Desactivar" : "Reactivar")
+                                </ItemMenuAccion>
+                            </MenuAcciones>
                         </td>
                     </tr>
                 }
