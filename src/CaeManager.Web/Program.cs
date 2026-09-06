@@ -842,6 +842,7 @@ app.MapClienteActivoEndpoints();
 app.MapSesionSoporteEndpoints();
 app.MapExtensionTokenEndpoints();
 app.MapAcreditacionesPendientesEndpoints();
+app.MapMarcarAcreditacionSubidaEndpoints();
 app.MapVistaVocabularioPreviewEndpoints();
 app.MapConectarMicrosoft365Endpoints();
 app.MapWebhookMicrosoft365Endpoints();
