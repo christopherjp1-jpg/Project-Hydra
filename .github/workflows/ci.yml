@@ -398,13 +398,13 @@ jobs:
         run: dotnet tool restore
 
       - name: Recoger la cobertura de Domain y Application
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: cobertura-unitarios
           path: coverage
 
       - name: Recoger el reparto de los bloques
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: reparto-bloque-*
           path: reparto
@@ -478,7 +478,7 @@ jobs:
       # una perdida de cobertura del producto. Un gate que cambia de
       # significado sin que nadie lo decida es peor que no tenerlo.
       - name: Recoger la cobertura de los bloques de integración
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: cobertura-integracion-*
           path: coverage/integration
