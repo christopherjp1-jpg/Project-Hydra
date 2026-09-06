@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hydra CAE</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>Hydra CAE</h1>
+  </header>
+
+  <section id="seccion-conectar" hidden>
+    <p>
+      Abre <strong>Conectar extensión</strong> dentro de Hydra (menú Documentos), genera un token
+      y pégalo aquí junto con la URL de tu Hydra.
+    </p>
+    <label for="campo-url">URL de Hydra</label>
+    <input id="campo-url" type="url" placeholder="https://tuempresa.talveg.app" />
+
+    <label for="campo-token">Token</label>
+    <textarea id="campo-token" rows="3" placeholder="Pega aquí el token generado en Hydra"></textarea>
+
+    <button id="boton-conectar" type="button">Conectar</button>
+    <p id="error-conectar" class="error" hidden></p>
+  </section>
+
+  <section id="seccion-conectado" hidden>
+    <p class="estado-conexion">
+      Conectado a <span id="texto-url"></span> · expira a las <span id="texto-expira"></span>
+      <button id="boton-desconectar" type="button" class="enlace">Desconectar</button>
+    </p>
+
+    <button id="boton-actualizar" type="button">Actualizar pendientes</button>
+    <p id="error-lista" class="error" hidden></p>
+    <p id="vacio-lista" hidden>No hay documentos pendientes de subir.</p>
+
+    <div id="lista-proveedores"></div>
+  </section>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
