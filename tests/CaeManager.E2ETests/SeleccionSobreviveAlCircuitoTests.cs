@@ -1,10 +1,12 @@
+using System.Collections.Generic;
+
 using Microsoft.Playwright;
 
 namespace CaeManager.E2ETests;
 
 /// <summary>
-/// <b>¿Sobrevive la selección de workspace a una navegación DENTRO del circuito de
-/// Blazor?</b>
+/// <b>¿Sobrevive la selección de workspace a una interacción PURA de circuito de
+/// Blazor — sin ninguna petición HTTP nueva?</b>
 ///
 /// <para>
 /// La selección (workspace activo y, en el plano 3, sesión privilegiada) vive en una
@@ -36,15 +38,6 @@ namespace CaeManager.E2ETests;
 [Collection("AppCollection")]
 public class SeleccionSobreviveAlCircuitoTests(WebAppFixture fixture)
 {
-    /// <summary>
-    /// Marca puesta en <c>window</c> antes de navegar. Si sigue ahí después, el
-    /// documento <b>no</b> se recargó y la navegación fue del router de Blazor. Sin
-    /// esta comprobación el test podría pasar por el motivo contrario al que
-    /// investiga: una recarga completa trae <c>HttpContext</c> y la selección
-    /// funcionaría igual, sin haber ejercitado el circuito.
-    /// </summary>
-    private const string MarcaDeCircuito = "__marcaSinRecargaDeDocumento";
-
     [Fact]
     public async Task La_seleccion_de_workspace_sigue_viva_tras_navegar_dentro_del_circuito()
     {
@@ -112,8 +105,12 @@ public class SeleccionSobreviveAlCircuitoTests(WebAppFixture fixture)
             .ToHaveTextAsync(Ayudas.NombreClienteDelegadoDemo,
                 new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
 
-        await page.EvaluateAsync($"window.{MarcaDeCircuito} = true;");
-
+        // Este clic navega SIN recargar el documento, pero SÍ dispara una petición
+        // HTTP real (enhanced navigation de Blazor Web Apps) — no es circuito puro,
+        // y no se le exige serlo: hacerlo fabricaría un rojo permanente (DEC-70,
+        // REC-162), porque no hay ningún mecanismo de UI en esta aplicación que
+        // cambie de URL sin HTTP. Solo se usa para volver a /empresas; la
+        // interacción de circuito puro que este test mide es la de más abajo.
         var enlaceEmpresas = page.Locator("a.nav-item[href='empresas']").First;
         await Assertions.Expect(enlaceEmpresas).ToBeVisibleAsync(
             new LocatorAssertionsToBeVisibleOptions { Timeout = 15_000 });
@@ -122,16 +119,6 @@ public class SeleccionSobreviveAlCircuitoTests(WebAppFixture fixture)
         await Assertions.Expect(page).ToHaveURLAsync(
             new System.Text.RegularExpressions.Regex("/empresas$"),
             new PageAssertionsToHaveURLOptions { Timeout = 15_000 });
-
-        // Guarda del instrumento, antes de la aserción que importa: si el documento
-        // se recargó, este test no ha medido el circuito y su resultado —verde o
-        // rojo— no responde a la pregunta.
-        var marcaSobrevive = await page.EvaluateAsync<bool?>($"window.{MarcaDeCircuito} ?? null");
-        Assert.True(
-            marcaSobrevive is true,
-            "el clic en el menú recargó el documento entero, así que esta ejecución NO ha ejercitado la " +
-            "navegación dentro del circuito. El test no ha medido lo que dice medir: hay que encontrar otra " +
-            "vía de navegación que no recargue antes de creerse su resultado.");
 
         // ── La pregunta ───────────────────────────────────────────────────────
         // HO-136-05: "ToHaveURL" no es una barrera de contenido. Con enhanced
@@ -154,7 +141,107 @@ public class SeleccionSobreviveAlCircuitoTests(WebAppFixture fixture)
         await Assertions.Expect(estadoAsentado).ToBeVisibleAsync(
             new LocatorAssertionsToBeVisibleOptions { Timeout = 15_000 });
 
+        // ── La interacción de circuito puro: cambiar el tema (REC-137) ──────────
+        // La única interacción de circuito puro disponible en esta aplicación:
+        // CambiarTemaAsync (Components.Layout.SelectorTema) no llama a
+        // NavigationManager, así que el evento @onchange, el interop de JS y el
+        // guardado se despachan íntegramente por la conexión de SignalR ya
+        // abierta, sin ninguna petición HTTP nueva — medido aquí con
+        // page.Request, no solo leído del código (control positivo más abajo,
+        // en Control_positivo_la_navegacion_por_clic_en_el_menu_SI_genera_una_
+        // peticion_http, demuestra que el instrumento sí distingue).
+        var selectorTema = page.Locator("select.selector-tema");
+        await Assertions.Expect(selectorTema).ToBeVisibleAsync(
+            new LocatorAssertionsToBeVisibleOptions { Timeout = 15_000 });
+
+        // Calentamiento, sin medir, ANTES de abrir la ventana de conteo.
+        // Medido: SelectorTema.OnAfterRenderAsync importa ./js/tema.js una
+        // sola vez POR INSTANCIA del componente (guarda _modulo is not
+        // null) — y el clic de arriba llega por enhanced navigation, que en
+        // esta aplicación puede recrear los componentes interactivos del
+        // layout, reiniciando esa guarda. La primera vez que el <select> de
+        // esta instancia dispara @onchange, ese import (y en la primera
+        // ejecución de la sesión también los de otros componentes del
+        // layout que se inicializan en el mismo pase, como
+        // buscador-global.js o atajos-globales.js/atajos-lista.js) puede
+        // seguir en vuelo — medido: 3 peticiones en una ejecución, 1 en
+        // otra, ninguna atribuible al evento de tema en sí. Se agota aquí,
+        // fuera de la ventana medida, para que el conteo de abajo mida el
+        // despacho del evento por el circuito, no el coste de primera carga
+        // de una instancia de componente recién montada.
+        var valorActual = await selectorTema.InputValueAsync();
+        var valorCalentamiento = valorActual == "claro" ? "sistema" : "claro";
+        await selectorTema.SelectOptionAsync(valorCalentamiento);
+        await Assertions.Expect(page.Locator("html")).ToHaveAttributeAsync(
+            "data-theme", valorCalentamiento, new LocatorAssertionsToHaveAttributeOptions { Timeout = 15_000 });
+
+        var peticionesDurantePausaCircuito = new List<string>();
+        void RegistrarPeticion(object? _, IRequest req) =>
+            peticionesDurantePausaCircuito.Add($"{req.Method} {req.Url} ({req.ResourceType})");
+        page.Request += RegistrarPeticion;
+
+        // valorCalentamiento nunca es "oscuro" (siempre "claro" o "sistema"), así
+        // que este cambio es siempre un valor distinto del que dejó el
+        // calentamiento — @onchange dispara de verdad dentro de la ventana medida.
+        await selectorTema.SelectOptionAsync("oscuro");
+
+        // Confirma que el evento sí llegó y se procesó en el circuito (con éxito o
+        // sin él, la propia respuesta visual demuestra que no hubo ninguna
+        // recarga/navegación de por medio) antes de leer las peticiones acumuladas.
+        await Assertions.Expect(page.Locator("html")).ToHaveAttributeAsync(
+            "data-theme", "oscuro", new LocatorAssertionsToHaveAttributeOptions { Timeout = 15_000 });
+
+        page.Request -= RegistrarPeticion;
+
+        Assert.True(
+            peticionesDurantePausaCircuito.Count == 0,
+            "Cambiar el tema no debería generar ninguna petición HTTP (es un evento sin NavigationManager, "
+            + "despachado por SignalR), pero se registraron: "
+            + string.Join("; ", peticionesDurantePausaCircuito)
+            + ". Si esto falla, la ventana que se medía ya no es de circuito puro y el resto de esta prueba no "
+            + "mide lo que dice medir.");
+
         await Assertions.Expect(page.GetByText("Aún no hay empresas")).Not.ToBeVisibleAsync(
             new LocatorAssertionsToBeVisibleOptions { Timeout = 15_000 });
+    }
+
+    /// <summary>
+    /// Control positivo de REC-137, exigido por HO-136-01 § 8/§ 17: si el instrumento
+    /// de arriba (contar peticiones HTTP) no distinguiera nada, un cero peticiones no
+    /// significaría "circuito puro" — significaría "Playwright no ve las peticiones".
+    /// Este test demuestra que SÍ las ve: la misma navegación por clic que el método
+    /// principal usa para volver a /empresas deja al menos una petición HTTP real al
+    /// destino, así que aplicar la misma guarda de cero peticiones a esa navegación
+    /// fallaría — por el motivo correcto. Es también la razón por la que el método
+    /// principal no exige circuito puro sobre ese clic (DEC-70, REC-162).
+    /// </summary>
+    [Fact]
+    public async Task Control_positivo_la_navegacion_por_clic_en_el_menu_SI_genera_una_peticion_http()
+    {
+        await using var contexto = await fixture.Browser.NewContextAsync();
+        var page = await contexto.NewPageAsync();
+
+        await Ayudas.IniciarSesionAsync(
+            page, fixture.BaseUrl, Ayudas.EmailOperadorConsultaConsultora, Ayudas.ContrasenaUsuariosPrueba);
+        await Ayudas.DescartarNotificacionesPendientesAsync(page);
+        await Ayudas.NavegarYEsperarAsync(page, fixture.BaseUrl);
+
+        var peticiones = new List<string>();
+        page.Request += (_, req) => peticiones.Add($"{req.Method} {req.Url}");
+
+        var enlaceEmpresas = page.Locator("a.nav-item[href='empresas']").First;
+        await Assertions.Expect(enlaceEmpresas).ToBeVisibleAsync(
+            new LocatorAssertionsToBeVisibleOptions { Timeout = 15_000 });
+        await enlaceEmpresas.ClickAsync();
+
+        await Assertions.Expect(page).ToHaveURLAsync(
+            new System.Text.RegularExpressions.Regex("/empresas$"),
+            new PageAssertionsToHaveURLOptions { Timeout = 15_000 });
+
+        Assert.True(
+            peticiones.TrueForAll(p => !p.Contains("/empresas")) == false,
+            "Este test debía demostrar que el clic en el menú SÍ genera una petición HTTP al destino — si esto "
+            + "falla, el propio control positivo dejó de ser válido y el cero peticiones del test principal no "
+            + "prueba nada. Peticiones observadas: " + string.Join("; ", peticiones));
     }
 }
