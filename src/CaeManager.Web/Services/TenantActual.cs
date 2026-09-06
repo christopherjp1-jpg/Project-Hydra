@@ -41,18 +41,35 @@ namespace CaeManager.Web.Services;
 /// <c>AuthenticationStateProvider.GetAuthenticationStateAsync()</c> en
 /// Blazor Server como leer <c>IHttpContextAccessor.HttpContext.User</c> son
 /// operaciones sin I/O real (el <c>ClaimsPrincipal</c> ya está materializado
-/// en memoria en ambos casos) — resolverlo una única vez por instancia
-/// (scoped, cacheado en <see cref="_resuelto"/>) y bloquear sobre ello aquí
-/// es seguro.
+/// en memoria en ambos casos).
+///
+/// <para>
+/// <b>No se cachea el resultado — se resuelve en cada lectura.</b> Antes se
+/// resolvía una única vez por instancia (scoped) bajo el supuesto de que
+/// "sin I/O real" implicaba "sin motivo para cambiar dentro de la misma
+/// petición". Ese supuesto era falso para <c>ExtensionAuthenticationHandler</c>
+/// (MVP1 de extensión de navegador, ver ARQUITECTURA-INTEGRACIONES.md § 14 en
+/// el repositorio de negocio): a diferencia de la cookie de Identity, ese
+/// esquema llama a <c>UserManager.FindByIdAsync</c> en cada petición para
+/// comprobar el security stamp, y esa consulta pasa por
+/// <c>CaeManagerDbContext</c> — cuyo filtro global evalúa
+/// <see cref="TenantId"/> DURANTE la propia autenticación, antes de que
+/// <c>HttpContext.User</c> reflejara la identidad de la extensión. La primera
+/// lectura (sin tenant, porque la petición aún no estaba autenticada) quedaba
+/// cacheada para el resto de la petición, y ya no se volvía a calcular cuando
+/// el endpoint corría después con el usuario ya autenticado de verdad — toda
+/// petición autenticada solo por token de extensión (nunca por cookie, que es
+/// el caso real de la extensión) veía su cartera vacía sin ningún error
+/// visible. Verificado contra un servidor real: con cookie funcionaba
+/// (enmascarando el defecto en cualquier prueba manual hecha desde un
+/// navegador con sesión iniciada), sin cookie no.
+/// </para>
 /// </summary>
 public class TenantActual(
     AuthenticationStateProvider authenticationStateProvider,
     IHttpContextAccessor httpContextAccessor,
     IClienteActivoSeleccionado clienteActivoSeleccionado) : ITenantActual
 {
-    private Guid? _tenantId;
-    private bool _resuelto;
-
     public Guid? TenantId
     {
         get
@@ -60,16 +77,11 @@ public class TenantActual(
             if (AmbitoTenantExplicito.TenantIdActual is { } tenantIdExplicito)
                 return tenantIdExplicito;
 
-            if (!_resuelto)
-            {
-                _tenantId = ResolverAsync().GetAwaiter().GetResult();
-                _resuelto = true;
-            }
-
-            if (_tenantId is null)
+            var tenantId = ResolverAsync().GetAwaiter().GetResult();
+            if (tenantId is null)
                 return null;
 
-            return clienteActivoSeleccionado.TenantIdSeleccionado ?? _tenantId;
+            return clienteActivoSeleccionado.TenantIdSeleccionado ?? tenantId;
         }
     }
 

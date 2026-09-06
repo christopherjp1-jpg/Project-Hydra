@@ -78,6 +78,17 @@ public static class Ayudas
     /// <summary>Primer Cliente Delegante de la demo — la referencia de "empresa final" (ver DelegacionDemoSeeder.NombreTenantRefrielectric).</summary>
     public const string NombreTenantRefrielectric = "Refrielectric S.L. (Cliente Delegante demo)";
 
+    /// <summary>
+    /// GestorCae NATIVO del tenant Refrielectric (sembrado aparte de
+    /// DelegacionDemoSeeder — no es un Operador Delegado, ver el comentario de
+    /// <see cref="EmailOperadorConsultaConsultora"/> sobre la diferencia), con
+    /// cartera real (AsignacionCartera) y acreditaciones de plataforma de
+    /// demo ya sembradas. Mismo criterio de duplicación que el resto de
+    /// constantes de esta clase: el nombre exacto vive en el seeder de
+    /// Infrastructure, que este proyecto no referencia.
+    /// </summary>
+    public const string EmailGestorRefrielectric = "refri.gestorcae1@caemanager.local";
+
     public static string EmailPrueba(string rolEnMinusculas, int numero) =>
         $"prueba.{rolEnMinusculas}{numero}@caemanager.local";
 

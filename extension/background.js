@@ -53,13 +53,24 @@ async function peticionAutenticada(ruta, opciones = {}) {
   try {
     respuesta = await fetch(`${hydraUrl}${ruta}`, {
       ...opciones,
+      // "manual": estos endpoints están protegidos con una política que
+      // combina el esquema de extensión con el de cookie de Identity
+      // (Policies.SesionOExtension). Cuando ninguno de los dos autentica, el
+      // reto que gana es el de la cookie: una redirección 302 a la pantalla
+      // de login, no un 401 limpio (comprobado contra el servidor real, no
+      // supuesto). Con el "follow" por defecto, fetch sigue esa redirección
+      // sola, entrega la página de login con status 200, y el .json() de más
+      // abajo lanzaría una excepción sin control al intentar parsear HTML.
+      // "manual" deja la redirección sin seguir para poder tratarla aquí como
+      // lo que es: sesión/token inválidos, igual que un 401 de verdad.
+      redirect: "manual",
       headers: { ...(opciones.headers ?? {}), Authorization: `Extension ${token}` },
     });
   } catch (error) {
     return { ok: false, error: `No pudimos contactar con Hydra (${error.message}).` };
   }
 
-  if (respuesta.status === 401) {
+  if (respuesta.status === 401 || respuesta.type === "opaqueredirect") {
     // Mismo criterio que el servidor (ExtensionAuthenticationHandler): un
     // token caducado o revocado no distingue el motivo. Se limpia aquí para
     // que el popup vuelva a pedir conexión en vez de seguir fallando en bucle.
